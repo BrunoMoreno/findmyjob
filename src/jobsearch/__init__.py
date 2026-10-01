@@ -357,15 +357,7 @@ def main(argv=None) -> None:
                    help="palavras-chave que devem estar no título")
     p.add_argument("--filter-exclude", nargs="+", default=[],
                    help="palavras-chave que NÃO devem estar no título")
-<<<<<<< HEAD:src/jobsearch/__init__.py
     args = p.parse_args(argv)
-
-    global USE_COLOR
-    if args.no_color:
-        USE_COLOR = False
-=======
-    args = p.parse_args()
->>>>>>> feature/improvements:main.py
 
     global USE_COLOR
     if args.no_color:
