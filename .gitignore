@@ -23,5 +23,6 @@ dist/
 .ruff_cache/
 .tox/
 
-.json
-.xls
+*.json
+*.xls
+*.xlsx
