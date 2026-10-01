@@ -1,0 +1,133 @@
+{
+  "role": "golang",
+  "scope": "geral",
+  "country": "",
+  "locations": [
+    "remote"
+  ],
+  "group": "all",
+  "backend": "ddg",
+  "filter_include": [
+    "backend",
+    "senior"
+  ],
+  "filter_exclude": [
+    "hibrido"
+  ],
+  "searched_at": "2026-09-28T19:58:21",
+  "total": 16,
+  "jobs": [
+    {
+      "title": "Backend Engineer (Golang) - Remote Work na empresa BairesDev ...",
+      "link": "https://br.linkedin.com/jobs/view/backend-engineer-golang-remote-work-at-bairesdev-4468795728",
+      "domain": "linkedin.com/jobs",
+      "location": "remote",
+      "query": "site:linkedin.com/jobs \"golang\" \"remote\""
+    },
+    {
+      "title": "Senior Backend Engineer (Golang) - Remote - LinkedIn México",
+      "link": "https://mx.linkedin.com/jobs/view/senior-backend-engineer-golang-remote-at-kake-4462228621",
+      "domain": "linkedin.com/jobs",
+      "location": "remote",
+      "query": "site:linkedin.com/jobs \"golang\" \"remote\""
+    },
+    {
+      "title": "Insider One - Senior AI Software Engineer - Golang (Remote)",
+      "link": "https://jobs.lever.co/insiderone/002009e5-e47f-4849-a89c-be95106b8af5",
+      "domain": "jobs.lever.co",
+      "location": "remote",
+      "query": "site:jobs.lever.co \"golang\" \"remote\""
+    },
+    {
+      "title": "Backend Golang Developer",
+      "link": "https://proofpoint.wd5.myworkdayjobs.com/en-US/ProofpointCareers/job/Backend-Golang-Developer_R14190",
+      "domain": "myworkdayjobs.com",
+      "location": "remote",
+      "query": "site:myworkdayjobs.com \"golang\" \"remote\""
+    },
+    {
+      "title": "Senior Staff Engineer",
+      "link": "https://geico.wd1.myworkdayjobs.com/en-US/External/job/Senior-Staff-Engineer_R0065948",
+      "domain": "myworkdayjobs.com",
+      "location": "remote",
+      "query": "site:myworkdayjobs.com \"golang\" \"remote\""
+    },
+    {
+      "title": "Senior Software Engineer (Golang) - remote in the US",
+      "link": "https://jobs.smartrecruiters.com/mirantis/744000145931149-senior-software-engineer-golang-remote-in-the-us",
+      "domain": "smartrecruiters.com",
+      "location": "remote",
+      "query": "site:smartrecruiters.com \"golang\" \"remote\""
+    },
+    {
+      "title": "Senior Golang Software Engineer, Infrastructure - remote in ...",
+      "link": "https://jobs.smartrecruiters.com/mirantis/744000150417468-senior-golang-software-engineer-infrastructure-remote-in-the-us",
+      "domain": "smartrecruiters.com",
+      "location": "remote",
+      "query": "site:smartrecruiters.com \"golang\" \"remote\""
+    },
+    {
+      "title": "Easy apply - Senior Software Engineer (Golang) - remote in ...",
+      "link": "https://jobs.smartrecruiters.com/oneclick-ui/company/Mirantis/publication/7772a5dd-87ad-4e59-884f-341ce694c8ef?dcr_ci=Mirantis",
+      "domain": "smartrecruiters.com",
+      "location": "remote",
+      "query": "site:smartrecruiters.com \"golang\" \"remote\""
+    },
+    {
+      "title": "Mirantis Senior Site Reliability Engineer (Golang ...",
+      "link": "https://jobs.smartrecruiters.com/mirantis/744000146541630-senior-site-reliability-engineer-golang-kubernetes-",
+      "domain": "smartrecruiters.com",
+      "location": "remote",
+      "query": "site:smartrecruiters.com \"golang\" \"remote\""
+    },
+    {
+      "title": "Senior Back-end Engineer (Golang) - (Remote) - Truelogic ...",
+      "link": "https://jobs.ashbyhq.com/truelogic/d0c3eb9e-a80e-4473-9b75-aaa23eeb768b",
+      "domain": "jobs.ashbyhq.com",
+      "location": "remote",
+      "query": "site:jobs.ashbyhq.com \"golang\" \"remote\""
+    },
+    {
+      "title": "Senior Golang Engineer @ IGAMINGHUNT - jobs.ashbyhq.com",
+      "link": "https://jobs.ashbyhq.com/igaminghunt/0282af20-a764-4c24-98e9-0ad2b315fa9c/application",
+      "domain": "jobs.ashbyhq.com",
+      "location": "remote",
+      "query": "site:jobs.ashbyhq.com \"golang\" \"remote\""
+    },
+    {
+      "title": "Senior Go Engineer @ Mondoo",
+      "link": "https://jobs.ashbyhq.com/mondoo/c287b750-96a3-46fd-bb2e-9b1b2994708d",
+      "domain": "jobs.ashbyhq.com",
+      "location": "remote",
+      "query": "site:jobs.ashbyhq.com \"golang\" \"remote\""
+    },
+    {
+      "title": "Senior Software Development Engineer - Java/Golang - REMOTE ...",
+      "link": "https://apply.workable.com/scalepex/j/174AE58766/",
+      "domain": "apply.workable.com",
+      "location": "remote",
+      "query": "site:apply.workable.com \"golang\" \"remote\""
+    },
+    {
+      "title": "Senior Backend Engineer (GoLang) - Remote | Immediate Joiners ...",
+      "link": "https://apply.workable.com/prox-works/j/24FEFF580B/",
+      "domain": "apply.workable.com",
+      "location": "remote",
+      "query": "site:apply.workable.com \"golang\" \"remote\""
+    },
+    {
+      "title": "Senior Backend Developer - Golang (Remote) - Jobgether",
+      "link": "https://apply.workable.com/jobgether/j/AF013D4FBA",
+      "domain": "apply.workable.com",
+      "location": "remote",
+      "query": "site:apply.workable.com \"golang\" \"remote\""
+    },
+    {
+      "title": "Software Engineer (Golang Backend) - Verneek",
+      "link": "https://apply.workable.com/verneek/j/06E0BE6EBC",
+      "domain": "apply.workable.com",
+      "location": "remote",
+      "query": "site:apply.workable.com \"golang\" \"remote\""
+    }
+  ]
+}

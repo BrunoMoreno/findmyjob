@@ -1,24 +1,15 @@
-#!/usr/bin/env python3
 """
 Busca de vagas via dorks (site:dominio "cargo" "local").
 
 Modo interativo (pergunta tudo):
-    python job_search.py
+    jobsearch
 
 Modo direto:
-    python job_search.py "backend engineer" -l remote -l latam            # geral
-    python job_search.py "backend engineer" -c br                         # só Brasil
-    python job_search.py "backend engineer" -c br -l remote --group ats   # Brasil + remoto
-    python job_search.py --list-countries
-
-Dependências:
-    pip install ddgs requests openpyxl
-
-Backend google (opcional):
-    export GOOGLE_API_KEY=...
-    export GOOGLE_CX=...
+    jobsearch "backend engineer" -l remote -l latam            # geral
+    jobsearch "backend engineer" -c br                         # só Brasil
+    jobsearch "backend engineer" -c br -l remote --group ats   # Brasil + remoto
+    jobsearch --list-countries
 """
-
 import argparse
 import json
 import os
@@ -29,6 +20,22 @@ from datetime import datetime
 from pathlib import Path
 
 import requests
+
+# ------------------------------------------------------------------ cores --
+# ANSI puro, sem dependência. Desliga sozinho quando a saída não é um terminal
+# (ex.: redirecionando para arquivo), com NO_COLOR definido ou com --no-color.
+_CODES = {"bold": "1", "dim": "2", "underline": "4", "red": "31",
+          "green": "32", "yellow": "33", "blue": "34", "magenta": "35", "cyan": "36"}
+USE_COLOR = sys.stdout.isatty() and "NO_COLOR" not in os.environ
+if os.name == "nt":
+    os.system("")  # habilita ANSI no terminal do Windows
+
+
+def paint(text: str, *styles: str) -> str:
+    if not USE_COLOR or not styles:
+        return text
+    return "\033[" + ";".join(_CODES[x] for x in styles) + "m" + text + "\033[0m"
+
 
 # Portais genéricos (funcionam para busca geral)
 BOARDS = ["indeed.com", "linkedin.com/jobs", "glassdoor.com"]
@@ -118,34 +125,107 @@ def plan_queries(role: str, locals_: list[str], group: str,
 
 # ---------------------------------------------------------------- backends --
 
-def search_ddg(query: str, max_results: int, country: dict | None) -> list[dict]:
+class SearchError(Exception):
+    """Erro durante a busca."""
+    pass
+
+
+def search_ddg(query: str, max_results: int, country: dict | None,
+               retries: int = 3, backoff: float = 2.0) -> list[dict]:
+    """Busca no DuckDuckGo com retry automático."""
     try:
         from ddgs import DDGS
     except ImportError:
-        sys.exit("Instale com: pip install ddgs")
+        raise SearchError("ddgs não instalado. Execute: pip install ddgs")
+
     kwargs = {"max_results": max_results}
     if country:
         kwargs["region"] = country["region"]
-    results = DDGS().text(query, **kwargs)
-    return [{"title": r.get("title", ""), "link": r.get("href", "")} for r in results]
+
+    last_error = None
+    for attempt in range(retries):
+        try:
+            results = DDGS().text(query, **kwargs)
+            return [{"title": r.get("title", ""), "link": r.get("href", "")}
+                    for r in results]
+        except Exception as e:
+            last_error = e
+            if attempt < retries - 1:
+                wait = backoff * (2 ** attempt)
+                print(paint(f"   [retry {attempt + 1}/{retries}] erro: {e}. "
+                            f"Tentando novamente em {wait:.1f}s...", "yellow"))
+                time.sleep(wait)
+
+    raise SearchError(f"Falha após {retries} tentativas: {last_error}")
 
 
-def search_google(query: str, max_results: int, country: dict | None) -> list[dict]:
+def search_google(query: str, max_results: int, country: dict | None,
+                  retries: int = 3, backoff: float = 2.0) -> list[dict]:
+    """Busca no Google Custom Search com retry automático."""
     key = os.environ.get("GOOGLE_API_KEY")
     cx = os.environ.get("GOOGLE_CX")
     if not key or not cx:
-        sys.exit("Defina GOOGLE_API_KEY e GOOGLE_CX para usar o backend google.")
+        raise SearchError("GOOGLE_API_KEY e GOOGLE_CX devem ser definidos para usar o backend google")
+
     params = {"key": key, "cx": cx, "q": query, "num": min(max_results, 10)}
     if country:
         params["gl"] = country["gl"]
-    resp = requests.get("https://www.googleapis.com/customsearch/v1",
-                        params=params, timeout=15)
-    resp.raise_for_status()
-    return [{"title": i.get("title", ""), "link": i.get("link", "")}
-            for i in resp.json().get("items", [])]
+
+    last_error = None
+    for attempt in range(retries):
+        try:
+            resp = requests.get("https://www.googleapis.com/customsearch/v1",
+                                params=params, timeout=15)
+            resp.raise_for_status()
+            return [{"title": i.get("title", ""), "link": i.get("link", "")}
+                    for i in resp.json().get("items", [])]
+        except requests.exceptions.RequestException as e:
+            last_error = e
+            if attempt < retries - 1:
+                wait = backoff * (2 ** attempt)
+                print(paint(f"   [retry {attempt + 1}/{retries}] erro: {e}. "
+                            f"Tentando novamente em {wait:.1f}s...", "yellow"))
+                time.sleep(wait)
+
+    raise SearchError(f"Falha após {retries} tentativas: {last_error}")
 
 
 BACKENDS = {"ddg": search_ddg, "google": search_google}
+
+
+# ------------------------------------------------------------------ filtros --
+
+def filter_jobs(jobs: list[dict], min_date: str | None = None,
+                max_date: str | None = None,
+                keywords: list[str] | None = None,
+                exclude_keywords: list[str] | None = None) -> list[dict]:
+    """
+    Filtra vagas por data e palavras-chave.
+
+    Args:
+        jobs: Lista de vagas
+        min_date: Data mínima (formato: YYYY-MM-DD)
+        max_date: Data máxima (formato: YYYY-MM-DD)
+        keywords: Palavras-chave que devem estar no título
+        exclude_keywords: Palavras-chave que NÃO devem estar no título
+
+    Returns:
+        Lista de vagas filtradas
+    """
+    filtered = jobs.copy()
+
+    if keywords:
+        filtered = [j for j in filtered
+                    if any(kw.lower() in j["title"].lower() for kw in keywords)]
+
+    if exclude_keywords:
+        filtered = [j for j in filtered
+                    if not any(kw.lower() in j["title"].lower() for kw in exclude_keywords)]
+
+    # Nota: Filtro por data exigiria parsing do conteúdo da página
+    # ou metadados adicionais que não estão disponíveis nos resultados de busca
+
+    return filtered
 
 
 # ------------------------------------------------------------- interactive --
@@ -162,11 +242,11 @@ def default_basename(role: str) -> str:
 
 
 def interactive_prompts(args: argparse.Namespace) -> None:
-    print("=== Busca de vagas ===\n")
+    print(paint("=== Busca de vagas ===", "bold", "cyan"), "\n")
     while not args.role:
         args.role = ask("Qual vaga você está buscando? (ex: backend engineer)")
 
-    print("\nAlcance da busca:")
+    print(paint("\nAlcance da busca:", "bold"))
     print("  1) Geral (mundo todo)")
     print("  2) Um país específico")
     if ask("Opção", "1") == "2":
@@ -175,14 +255,14 @@ def interactive_prompts(args: argparse.Namespace) -> None:
         if code in COUNTRIES:
             args.country = code
         else:
-            print(f"  [aviso] país '{code}' desconhecido, usando busca geral.")
+            print(paint(f"  [aviso] país '{code}' desconhecido, usando busca geral.", "yellow"))
         locs = ask("Refinar por cidade/remote (opcional, vírgula)", "")
     else:
         args.country = None
         locs = ask("Local(is), separados por vírgula", "remote, latam")
     args.local = [x.strip() for x in locs.split(",") if x.strip()]
 
-    print("\nOnde buscar?")
+    print(paint("\nOnde buscar?", "bold"))
     print("  1) Portais (Indeed, LinkedIn, Glassdoor + locais do país)")
     print("  2) ATS das empresas (Greenhouse, Lever, Workday, ...)")
     print("  3) Todos")
@@ -190,6 +270,13 @@ def interactive_prompts(args: argparse.Namespace) -> None:
 
     max_raw = ask("Resultados por query", str(args.max))
     args.max = int(max_raw) if max_raw.isdigit() else args.max
+
+    # Filtros adicionais
+    print(paint("\nFiltros adicionais (opcional):", "bold"))
+    include = ask("Palavras-chave incluir (vírgula)", "")
+    args.filter_include = [x.strip() for x in include.split(",") if x.strip()]
+    exclude = ask("Palavras-chave excluir (vírgula)", "")
+    args.filter_exclude = [x.strip() for x in exclude.split(",") if x.strip()]
 
     args.output = ask("Nome base dos arquivos (gera .json e .xlsx)",
                       default_basename(args.role))
@@ -210,7 +297,7 @@ def save_xlsx(path: str, meta: dict, jobs: list[dict]) -> bool:
         from openpyxl.styles import Alignment, Font, PatternFill
         from openpyxl.utils import get_column_letter
     except ImportError:
-        print("[aviso] openpyxl não instalado (pip install openpyxl); .xlsx não foi gerado.")
+        print(paint("[aviso] openpyxl não instalado (pip install openpyxl); .xlsx não foi gerado.", "yellow"))
         return False
 
     wb = Workbook()
@@ -249,7 +336,7 @@ def save_xlsx(path: str, meta: dict, jobs: list[dict]) -> bool:
 
 # -------------------------------------------------------------------- main --
 
-def main() -> None:
+def main(argv=None) -> None:
     p = argparse.ArgumentParser(description="Busca de vagas com dorks de busca")
     p.add_argument("role", nargs="?", help='cargo, ex: "backend engineer" (omita para modo interativo)')
     p.add_argument("-c", "--country", choices=COUNTRIES,
@@ -262,13 +349,23 @@ def main() -> None:
     p.add_argument("-o", "--output", help="nome base dos arquivos de saída, gera .json e .xlsx")
     p.add_argument("-i", "--interactive", action="store_true", help="força o modo interativo")
     p.add_argument("--delay", type=float, default=2.0, help="segundos entre queries")
+    p.add_argument("--retries", type=int, default=3, help="número de tentativas em caso de erro")
     p.add_argument("--show-queries", action="store_true", help="só imprime as queries")
+    p.add_argument("--no-color", action="store_true", help="desativa as cores")
     p.add_argument("--list-countries", action="store_true", help="lista os países disponíveis")
-    args = p.parse_args()
+    p.add_argument("--filter-include", nargs="+", default=[],
+                   help="palavras-chave que devem estar no título")
+    p.add_argument("--filter-exclude", nargs="+", default=[],
+                   help="palavras-chave que NÃO devem estar no título")
+    args = p.parse_args(argv)
+
+    global USE_COLOR
+    if args.no_color:
+        USE_COLOR = False
 
     if args.list_countries:
         for k, v in COUNTRIES.items():
-            print(f"{k}  {v['names'][0]}")
+            print(f"{paint(k, 'bold', 'cyan')}  {v['names'][0]}")
         return
 
     if args.interactive or not args.role:
@@ -283,7 +380,7 @@ def main() -> None:
         return
 
     scope = country["names"][0] if country else "geral"
-    print(f"Escopo: {scope} | {len(plan)} queries")
+    print(paint("Escopo:", "bold"), paint(scope, "magenta"), "|", f"{len(plan)} queries")
 
     search = BACKENDS[args.backend]
     seen: set[str] = set()
@@ -291,27 +388,36 @@ def main() -> None:
 
     try:
         for item in plan:
-            print(f"\n== {item['domain']} | {item['location']} ==")
-            print(f"   {item['query']}")
+            print("\n" + paint(f"== {item['domain']}", "bold", "cyan"),
+                  paint(f"| {item['location']} ==", "yellow"))
+            print("   " + paint(item["query"], "dim"))
             try:
-                results = search(item["query"], args.max, country)
-            except Exception as e:  # rede, rate limit, chave inválida...
-                print(f"   [erro] {e}")
+                results = search(item["query"], args.max, country,
+                                 retries=args.retries)
+            except SearchError as e:
+                print(paint(f"   [erro] {e}", "red"))
                 time.sleep(args.delay)
                 continue
 
             new = [r for r in results if r["link"] and r["link"] not in seen]
             if not new:
-                print("   (nenhum resultado novo)")
+                print(paint("   (nenhum resultado novo)", "dim"))
             for r in new:
                 seen.add(r["link"])
                 jobs.append({"title": r["title"], "link": r["link"],
                              "domain": item["domain"], "location": item["location"],
                              "query": item["query"]})
-                print(f"   - {r['title']}\n     {r['link']}")
+                print(f"   {paint('-', 'green')} {paint(r['title'], 'bold', 'green')}")
+                print("     " + paint(r["link"], "blue", "underline"))
             time.sleep(args.delay)
     except KeyboardInterrupt:
-        print("\n[interrompido] salvando o que foi encontrado até aqui...")
+        print(paint("\n[interrompido] salvando o que foi encontrado até aqui...", "yellow"))
+
+    # Aplicar filtros
+    if args.filter_include or args.filter_exclude:
+        jobs = filter_jobs(jobs, keywords=args.filter_include,
+                          exclude_keywords=args.filter_exclude)
+        print(paint(f"\nFiltros aplicados: {len(jobs)} vagas restantes", "cyan"))
 
     base = args.output or default_basename(args.role)
     base = re.sub(r"\.(json|xlsx?)$", "", base, flags=re.IGNORECASE)
@@ -322,13 +428,16 @@ def main() -> None:
         "locations": args.local,
         "group": args.group,
         "backend": args.backend,
+        "filter_include": args.filter_include,
+        "filter_exclude": args.filter_exclude,
         "searched_at": datetime.now().isoformat(timespec="seconds"),
     }
     save_json(f"{base}.json", meta, jobs)
     saved = [f"{base}.json"]
     if save_xlsx(f"{base}.xlsx", meta, jobs):
         saved.append(f"{base}.xlsx")
-    print(f"\n{len(jobs)} vagas únicas encontradas. Salvo em: {', '.join(saved)}")
+    print("\n" + paint(f"{len(jobs)} vagas únicas encontradas.", "bold", "green"),
+          "Salvo em:", paint(", ".join(saved), "cyan"))
 
 
 if __name__ == "__main__":

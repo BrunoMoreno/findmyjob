@@ -1,0 +1,495 @@
+{
+  "role": "python",
+  "scope": "geral",
+  "country": "",
+  "locations": [
+    "remote"
+  ],
+  "group": "all",
+  "backend": "ddg",
+  "filter_include": [],
+  "filter_exclude": [
+    "hibrido",
+    "presencial"
+  ],
+  "searched_at": "2026-10-01T19:32:27",
+  "total": 68,
+  "jobs": [
+    {
+      "title": "Flexible Remote Python Jobs - Apply Today to Work From Home ... - Indeed",
+      "link": "https://www.indeed.com/q-Remote-Python-jobs.html",
+      "domain": "indeed.com",
+      "location": "remote",
+      "query": "site:indeed.com \"python\" \"remote\""
+    },
+    {
+      "title": "Flexible Python Jobs - Apply Today to Work From Home in Remote ...",
+      "link": "https://www.indeed.com/q-Python-l-Remote-jobs.html",
+      "domain": "indeed.com",
+      "location": "remote",
+      "query": "site:indeed.com \"python\" \"remote\""
+    },
+    {
+      "title": "100+ Python Remote Jobs, Employment 29 September, 2026| Indeed",
+      "link": "https://pk.indeed.com/Python-Remote-jobs",
+      "domain": "indeed.com",
+      "location": "remote",
+      "query": "site:indeed.com \"python\" \"remote\""
+    },
+    {
+      "title": "300 Python Developer Job Vacancies in Remote | Indeed",
+      "link": "https://in.indeed.com/q-python-developer-l-remote-jobs.html?vjk=ca99dbd03c105980",
+      "domain": "indeed.com",
+      "location": "remote",
+      "query": "site:indeed.com \"python\" \"remote\""
+    },
+    {
+      "title": "25 Fresher Python Job Vacancies in Remote | Indeed",
+      "link": "https://in.indeed.com/q-fresher-python-l-remote-jobs.html?vjk=7663a01171ee7f3b",
+      "domain": "indeed.com",
+      "location": "remote",
+      "query": "site:indeed.com \"python\" \"remote\""
+    },
+    {
+      "title": "Python Remote jobs",
+      "link": "https://uk.indeed.com/Python-Remote-jobs",
+      "domain": "indeed.com",
+      "location": "remote",
+      "query": "site:indeed.com \"python\" \"remote\""
+    },
+    {
+      "title": "25+ Remote Python Jobs, Employment 28 September 2026| Indeed",
+      "link": "https://ng.indeed.com/Remote-Python-jobs",
+      "domain": "indeed.com",
+      "location": "remote",
+      "query": "site:indeed.com \"python\" \"remote\""
+    },
+    {
+      "title": "100+ Remote Python Việc làm, tuyển dụng ở ngày 30 tháng 9 năm 2026| Indeed",
+      "link": "https://vn.indeed.com/q-remote-python-việc-làm.html",
+      "domain": "indeed.com",
+      "location": "remote",
+      "query": "site:indeed.com \"python\" \"remote\""
+    },
+    {
+      "title": "Python Remote Jobs in United States (10,000+ Open Roles ...",
+      "link": "https://www.linkedin.com/jobs/python-remote-jobs",
+      "domain": "linkedin.com/jobs",
+      "location": "remote",
+      "query": "site:linkedin.com/jobs \"python\" \"remote\""
+    },
+    {
+      "title": "35,000+ Python jobs in Remote - LinkedIn",
+      "link": "https://www.linkedin.com/jobs/python-jobs-remote",
+      "domain": "linkedin.com/jobs",
+      "location": "remote",
+      "query": "site:linkedin.com/jobs \"python\" \"remote\""
+    },
+    {
+      "title": "Brazil - Remote: Full Stack/Scientific Developer (Python)",
+      "link": "https://br.linkedin.com/jobs/view/brazil-remote-full-stack-scientific-developer-python-at-halliburton-4429350502",
+      "domain": "linkedin.com/jobs",
+      "location": "remote",
+      "query": "site:linkedin.com/jobs \"python\" \"remote\""
+    },
+    {
+      "title": "+ de 4.000 vagas de Remote Python Developer em: Brasil",
+      "link": "https://br.linkedin.com/jobs/remote-python-developer-vagas",
+      "domain": "linkedin.com/jobs",
+      "location": "remote",
+      "query": "site:linkedin.com/jobs \"python\" \"remote\""
+    },
+    {
+      "title": "Senior AI/LLM Engineer (Python) - Remote - LinkedIn",
+      "link": "https://ca.linkedin.com/jobs/view/senior-ai-llm-engineer-python-remote-at-kake-4458009277",
+      "domain": "linkedin.com/jobs",
+      "location": "remote",
+      "query": "site:linkedin.com/jobs \"python\" \"remote\""
+    },
+    {
+      "title": "Python Remote Jobs in India (8,000+ Open Roles) | LinkedIn",
+      "link": "https://in.linkedin.com/jobs/python-remote-jobs",
+      "domain": "linkedin.com/jobs",
+      "location": "remote",
+      "query": "site:linkedin.com/jobs \"python\" \"remote\""
+    },
+    {
+      "title": "Fullstack Python Developer - Remote Work | REF#296999",
+      "link": "https://in.linkedin.com/jobs/view/fullstack-python-developer-remote-work-ref#296999-at-bairesdev-4438258836",
+      "domain": "linkedin.com/jobs",
+      "location": "remote",
+      "query": "site:linkedin.com/jobs \"python\" \"remote\""
+    },
+    {
+      "title": "8,792 Remote python jobs in United States - Glassdoor",
+      "link": "https://www.glassdoor.com/Job/remote-python-jobs-SRCH_KO0,13.htm",
+      "domain": "glassdoor.com",
+      "location": "remote",
+      "query": "site:glassdoor.com \"python\" \"remote\""
+    },
+    {
+      "title": "8,717 Python remote jobs in United States - Glassdoor",
+      "link": "https://www.glassdoor.com/Job/python-remote-jobs-SRCH_KO0,13.htm",
+      "domain": "glassdoor.com",
+      "location": "remote",
+      "query": "site:glassdoor.com \"python\" \"remote\""
+    },
+    {
+      "title": "5,390 python Jobs in Remote, September 2026 | Glassdoor",
+      "link": "https://www.glassdoor.com/Job/remote-python-jobs-SRCH_IL.0,6_IS11047_KO7,13.htm",
+      "domain": "glassdoor.com",
+      "location": "remote",
+      "query": "site:glassdoor.com \"python\" \"remote\""
+    },
+    {
+      "title": "1,204 Python developer jobs in Remote - Glassdoor",
+      "link": "https://www.glassdoor.com/Job/remote-python-developer-jobs-SRCH_IL.0,6_IS11047_KO7,23.htm",
+      "domain": "glassdoor.com",
+      "location": "remote",
+      "query": "site:glassdoor.com \"python\" \"remote\""
+    },
+    {
+      "title": "6,083 Remote python jobs in United States - Glassdoor",
+      "link": "https://www.glassdoor.com/Job/us-remote-python-jobs-SRCH_IL.0,2_IN1_KO3,16.htm",
+      "domain": "glassdoor.com",
+      "location": "remote",
+      "query": "site:glassdoor.com \"python\" \"remote\""
+    },
+    {
+      "title": "1,235 Python programmer jobs in Remote - Glassdoor",
+      "link": "https://www.glassdoor.com/Job/remote-python-programmer-jobs-SRCH_IL.0,6_IS11047_KO7,24.htm",
+      "domain": "glassdoor.com",
+      "location": "remote",
+      "query": "site:glassdoor.com \"python\" \"remote\""
+    },
+    {
+      "title": "454 Python backend developer jobs in Remote - Glassdoor",
+      "link": "https://www.glassdoor.com/Job/remote-python-backend-developer-jobs-SRCH_IL.0,6_IS11047_KO7,31.htm",
+      "domain": "glassdoor.com",
+      "location": "remote",
+      "query": "site:glassdoor.com \"python\" \"remote\""
+    },
+    {
+      "title": "Job Application for Python Cloud Engineer at Admios Jobs",
+      "link": "https://boards.greenhouse.io/admios/jobs/5751446002?ref=remote_rocketship",
+      "domain": "boards.greenhouse.io",
+      "location": "remote",
+      "query": "site:boards.greenhouse.io \"python\" \"remote\""
+    },
+    {
+      "title": "Greenhouse Software",
+      "link": "https://boards.greenhouse.io/remotecom/jobs/6029097003",
+      "domain": "boards.greenhouse.io",
+      "location": "remote",
+      "query": "site:boards.greenhouse.io \"python\" \"remote\""
+    },
+    {
+      "title": "Jobs at SingleStore - Greenhouse Software",
+      "link": "https://boards.greenhouse.io/singlestore/jobs/5793358",
+      "domain": "boards.greenhouse.io",
+      "location": "remote",
+      "query": "site:boards.greenhouse.io \"python\" \"remote\""
+    },
+    {
+      "title": "Job Application for Software Engineer - Python - Ubuntu Pro ...",
+      "link": "https://boards.greenhouse.io/canonicaljobs/jobs/6709767",
+      "domain": "boards.greenhouse.io",
+      "location": "remote",
+      "query": "site:boards.greenhouse.io \"python\" \"remote\""
+    },
+    {
+      "title": "Jobs at ília - boards.greenhouse.io",
+      "link": "https://boards.greenhouse.io/ilia/jobs/5386885004",
+      "domain": "boards.greenhouse.io",
+      "location": "remote",
+      "query": "site:boards.greenhouse.io \"python\" \"remote\""
+    },
+    {
+      "title": "Jobs at DataHub - Greenhouse Software",
+      "link": "https://boards.greenhouse.io/acryldata/jobs/4148377007/confirmation",
+      "domain": "boards.greenhouse.io",
+      "location": "remote",
+      "query": "site:boards.greenhouse.io \"python\" \"remote\""
+    },
+    {
+      "title": "Jobs at Canonical",
+      "link": "https://boards.greenhouse.io/canonical/jobs/1158266",
+      "domain": "boards.greenhouse.io",
+      "location": "remote",
+      "query": "site:boards.greenhouse.io \"python\" \"remote\""
+    },
+    {
+      "title": "Python Developer Remote Jobs - Work From Home Positions",
+      "link": "https://www.bing.com/aclick?ld=e8DhniDjbEeIVdWDP6lrKaITVUCUw91bsHsqGRzbFlPd0hqxUPRnYRIrmPFynduVcGi7PmQo_8xePaBlk0pdNjGiAjxzasbWW0C3Zx39fyLu3nxiBJeG502lEgdmpEIhLdQL61kk2bMVpL5CiSZyzfrN9-aMmtLAZ5wkAj10fFd7TKZ-e_4sy7M7P0p7fUGQ1c_nkRHA&u=aHR0cHMlM2ElMmYlMmZ3d3cuam9ibGVhZHMuY29tJTJmcmVnaXN0cmF0aW9uJTJmOTklMmZqb2JzJTJmZW4lMmZnbG9iYWwlMmZQeXRob24tRGV2ZWxvcGVyLVJlbW90ZSUyNTIwSm9icyUyZmFsbCUyZnB5dGhvbi1kZXZlbG9wZXIlM2Z1dG1fc291cmNlJTNkbWljcm9zb2Z0LWFkc194eC1zZWFyY2hfWFhfXyUyNnV0bV9jb250ZW50JTNkUmVtb3RlJTdjRU4lN2NYWCU3YzJfUHl0aG9uLURldmVsb3Blci1SZW1vdGUlMjUyMEpvYnNfc2VhcmNoLXJlbW90ZV83MCUyNnV0bV9tZWRpdW0lM2RzZWEtYWQlMjZ1dG1fY2FtcGFpZ24lM2RSZW1vdGUlN2NFTiU3Y1hYJTdjMiUyNm1zY2xraWQlM2Q0NjNiYmVhYWJkNjgxNWIwZjRhY2Q0MTQ2MjM0ZDhmYw&rlid=463bbeaabd6815b0f4acd4146234d8fc",
+      "domain": "jobs.lever.co",
+      "location": "remote",
+      "query": "site:jobs.lever.co \"python\" \"remote\""
+    },
+    {
+      "title": "Oowlish Technology - Lever",
+      "link": "https://jobs.lever.co/oowlish",
+      "domain": "jobs.lever.co",
+      "location": "remote",
+      "query": "site:jobs.lever.co \"python\" \"remote\""
+    },
+    {
+      "title": "Lingaro jobs",
+      "link": "https://jobs.lever.co/lingarogroup",
+      "domain": "jobs.lever.co",
+      "location": "remote",
+      "query": "site:jobs.lever.co \"python\" \"remote\""
+    },
+    {
+      "title": "HowGood - Senior Python Engineer (On-site or Remote)",
+      "link": "https://jobs.lever.co/HowGood/ab37972a-4c4e-4625-90a3-88e5c0315bfe",
+      "domain": "jobs.lever.co",
+      "location": "remote",
+      "query": "site:jobs.lever.co \"python\" \"remote\""
+    },
+    {
+      "title": "BriteCore jobs",
+      "link": "https://jobs.lever.co/britecore",
+      "domain": "jobs.lever.co",
+      "location": "remote",
+      "query": "site:jobs.lever.co \"python\" \"remote\""
+    },
+    {
+      "title": "Supermove - Software Engineer, Full-Stack (Remote) - Lever",
+      "link": "https://jobs.lever.co/supermove/176fe130-a2cc-40da-b978-8c693fefc510",
+      "domain": "jobs.lever.co",
+      "location": "remote",
+      "query": "site:jobs.lever.co \"python\" \"remote\""
+    },
+    {
+      "title": "Experienced Web Scraping Engineer - Python (Remote)",
+      "link": "https://jobs.lever.co/oxylabs/6bc963ae-b15f-4e20-8fdb-d64f6adb5433/apply",
+      "domain": "jobs.lever.co",
+      "location": "remote",
+      "query": "site:jobs.lever.co \"python\" \"remote\""
+    },
+    {
+      "title": "Artera - Senior/Staff Software Engineer - Python",
+      "link": "https://jobs.lever.co/artera/cc5cbc4d-c7e7-4573-993f-526cb33f5a81",
+      "domain": "jobs.lever.co",
+      "location": "remote",
+      "query": "site:jobs.lever.co \"python\" \"remote\""
+    },
+    {
+      "title": "Python Remote Jobs - Work From Home Positions",
+      "link": "https://www.bing.com/aclick?ld=e8G3Y4g2F8MOpM42Mg85KZKjVUCUwr7T64y0iE4F55TOi_-nuT0kjXvMdLR1h2rw94Ibu9IcaFh1AY_3YONkO2H1VwcBmoAhqBCAiAzx-IBoGccjI1FWb1pnaq0gLxLhiKX_kNwIWXnlU1BW36V9w4nq9YWVjKROejQv2vLqNMTNxv-H9xT1oVmsAX1Yt8MzgEZFpk-75i0nyOlsnbs91bpPcKwg4&u=aHR0cHMlM2ElMmYlMmZ3d3cuam9ibGVhZHMuY29tJTJmcmVnaXN0cmF0aW9uJTJmOTklMmZqb2JzJTJmZW4lMmZnbG9iYWwlMmZQeXRob24tUmVtb3RlJTI1MjBKb2JzJTJmYWxsJTJmcHl0aG9uJTNmdXRtX3NvdXJjZSUzZG1pY3Jvc29mdC1hZHNfeHgtc2VhcmNoX1hYX18lMjZ1dG1fY29udGVudCUzZFJlbW90ZSU3Y0VOJTdjWFglN2MyX1B5dGhvbi1SZW1vdGUlMjUyMEpvYnNfc2VhcmNoLXJlbW90ZV83MCUyNnV0bV9tZWRpdW0lM2RzZWEtYWQlMjZ1dG1fY2FtcGFpZ24lM2RSZW1vdGUlN2NFTiU3Y1hYJTdjMiUyNm1zY2xraWQlM2QzN2U5MjBiOTA0NjkxNDc0YTcxODRhMDdkYjA4N2QzNA&rlid=37e920b904691474a7184a07db087d34",
+      "domain": "myworkdayjobs.com",
+      "location": "remote",
+      "query": "site:myworkdayjobs.com \"python\" \"remote\""
+    },
+    {
+      "title": "Python & Java Full Stack Developer (AI-Assisted)",
+      "link": "https://jabil.wd5.myworkdayjobs.com/jabil_careers/job/remote---usa/python---java-full-stack-developer--ai-assisted-_j2466341-1",
+      "domain": "myworkdayjobs.com",
+      "location": "remote",
+      "query": "site:myworkdayjobs.com \"python\" \"remote\""
+    },
+    {
+      "title": "Senior Python Engineer - dimensional.wd5.myworkdayjobs.com",
+      "link": "https://dimensional.wd5.myworkdayjobs.com/en-US/DFA_Careers/job/Senior-Python-Engineer_2026-9045",
+      "domain": "myworkdayjobs.com",
+      "location": "remote",
+      "query": "site:myworkdayjobs.com \"python\" \"remote\""
+    },
+    {
+      "title": "Sr. Data Scientist (Remote Eligible)",
+      "link": "https://genmills.wd1.myworkdayjobs.com/en-US/GMI_External_Careers/job/Sr-Data-Scientist--Remote-Eligible-_10129073",
+      "domain": "myworkdayjobs.com",
+      "location": "remote",
+      "query": "site:myworkdayjobs.com \"python\" \"remote\""
+    },
+    {
+      "title": "Engineering Manager - Core Infrastructure (Remote)",
+      "link": "https://crowdstrike.wd5.myworkdayjobs.com/en-US/crowdstrikecareers/job/Engineering-Manager---Core-Infrastructure--Remote-_R30005",
+      "domain": "myworkdayjobs.com",
+      "location": "remote",
+      "query": "site:myworkdayjobs.com \"python\" \"remote\""
+    },
+    {
+      "title": "Solution Support Engineer 5, Python Platform",
+      "link": "https://netflix.wd108.myworkdayjobs.com/en-US/Netflix/job/Solution-Support-Engineer-5--Python-Platform_JR42331",
+      "domain": "myworkdayjobs.com",
+      "location": "remote",
+      "query": "site:myworkdayjobs.com \"python\" \"remote\""
+    },
+    {
+      "title": "AI Software Engineer",
+      "link": "https://guidehouse.wd1.myworkdayjobs.com/en-US/External/job/AI-Software-Engineer_40569",
+      "domain": "myworkdayjobs.com",
+      "location": "remote",
+      "query": "site:myworkdayjobs.com \"python\" \"remote\""
+    },
+    {
+      "title": "Search for Jobs",
+      "link": "https://catalyte.wd503.myworkdayjobs.com/catalyte",
+      "domain": "myworkdayjobs.com",
+      "location": "remote",
+      "query": "site:myworkdayjobs.com \"python\" \"remote\""
+    },
+    {
+      "title": "Crunch Python Systems Engineer (Remote) | SmartRecruiters",
+      "link": "https://jobs.smartrecruiters.com/Crunch2/743999680113961-python-systems-engineer-remote-",
+      "domain": "smartrecruiters.com",
+      "location": "remote",
+      "query": "site:smartrecruiters.com \"python\" \"remote\""
+    },
+    {
+      "title": "Easy apply - Freelance Python Developer (Poland, Eastern ...",
+      "link": "https://jobs.smartrecruiters.com/VTEnterprise/743999930349912-freelance-python-developer-poland-eastern-europe-remote-f-t-p-t-",
+      "domain": "smartrecruiters.com",
+      "location": "remote",
+      "query": "site:smartrecruiters.com \"python\" \"remote\""
+    },
+    {
+      "title": "EVB Forward Deployed Engineer | SmartRecruiters",
+      "link": "https://jobs.smartrecruiters.com/evb/744000149568910-forward-deployed-engineer",
+      "domain": "smartrecruiters.com",
+      "location": "remote",
+      "query": "site:smartrecruiters.com \"python\" \"remote\""
+    },
+    {
+      "title": "Nagarro Senior Staff Engineer | SmartRecruiters",
+      "link": "https://jobs.smartrecruiters.com/nagarro1/744000149266369-senior-staff-engineer",
+      "domain": "smartrecruiters.com",
+      "location": "remote",
+      "query": "site:smartrecruiters.com \"python\" \"remote\""
+    },
+    {
+      "title": "Sign In - SmartRecruiters",
+      "link": "https://www.smartrecruiters.com/account/company-sign-up?lang=de",
+      "domain": "smartrecruiters.com",
+      "location": "remote",
+      "query": "site:smartrecruiters.com \"python\" \"remote\""
+    },
+    {
+      "title": "Developer, Applied AI, Penguin Random House (Open to Remote)",
+      "link": "https://jobs.smartrecruiters.com/Bertelsmann-Jobs/744000151896529-developer-applied-ai-penguin-random-house-open-to-remote-",
+      "domain": "smartrecruiters.com",
+      "location": "remote",
+      "query": "site:smartrecruiters.com \"python\" \"remote\""
+    },
+    {
+      "title": "Nagarro Associate Staff Engineer, Python | SmartRecruiters",
+      "link": "https://jobs.smartrecruiters.com/nagarro1/743999905643027-associate-staff-engineer-python",
+      "domain": "smartrecruiters.com",
+      "location": "remote",
+      "query": "site:smartrecruiters.com \"python\" \"remote\""
+    },
+    {
+      "title": "Back-End Developer (Python)- REMOTE - Smart Recruiters Jobs",
+      "link": "https://jobs.smartrecruiters.com/Fygaro/743999840756768-back-end-developer-python-remote",
+      "domain": "smartrecruiters.com",
+      "location": "remote",
+      "query": "site:smartrecruiters.com \"python\" \"remote\""
+    },
+    {
+      "title": "Senior OSS Developer — Python (Remote) @ HTTPie",
+      "link": "https://jobs.ashbyhq.com/httpie/a5363c17-576a-4f2a-bac0-541a71f450c9",
+      "domain": "jobs.ashbyhq.com",
+      "location": "remote",
+      "query": "site:jobs.ashbyhq.com \"python\" \"remote\""
+    },
+    {
+      "title": "Senior Backend Engineer (Python) (Remote) @ Scalera",
+      "link": "https://jobs.ashbyhq.com/scalera/9feb0781-ace4-49b6-b8dd-be6a6a720b4e",
+      "domain": "jobs.ashbyhq.com",
+      "location": "remote",
+      "query": "site:jobs.ashbyhq.com \"python\" \"remote\""
+    },
+    {
+      "title": "Senior Python Engineer - AI Code Evaluation (Codex / Claude ...",
+      "link": "https://jobs.ashbyhq.com/g2i/6dcd89e4-484e-417f-b9a9-dbd724544d8f",
+      "domain": "jobs.ashbyhq.com",
+      "location": "remote",
+      "query": "site:jobs.ashbyhq.com \"python\" \"remote\""
+    },
+    {
+      "title": "Member of Technical Staff, Exceptional Generalist (Remote)",
+      "link": "https://jobs.ashbyhq.com/inferact/f0d2619d-28e0-4b25-8d30-3ac555071abb",
+      "domain": "jobs.ashbyhq.com",
+      "location": "remote",
+      "query": "site:jobs.ashbyhq.com \"python\" \"remote\""
+    },
+    {
+      "title": "Junior/SemiSenior Back-End (Python) Engineer - Security and ...",
+      "link": "https://jobs.ashbyhq.com/truelogic/e2b25373-4d86-418f-aa98-41dfeb9c92da/application",
+      "domain": "jobs.ashbyhq.com",
+      "location": "remote",
+      "query": "site:jobs.ashbyhq.com \"python\" \"remote\""
+    },
+    {
+      "title": "Technical Support Engineer - Remote EMEA @ Factory",
+      "link": "https://jobs.ashbyhq.com/factory/4fee6050-ebaa-45cb-a777-a9c2f1bf8d02",
+      "domain": "jobs.ashbyhq.com",
+      "location": "remote",
+      "query": "site:jobs.ashbyhq.com \"python\" \"remote\""
+    },
+    {
+      "title": "Senior Software Engineer @ Outmarket AI",
+      "link": "https://jobs.ashbyhq.com/outmarket/736024c0-15b1-4c75-82fd-7e1798f6ab79",
+      "domain": "jobs.ashbyhq.com",
+      "location": "remote",
+      "query": "site:jobs.ashbyhq.com \"python\" \"remote\""
+    },
+    {
+      "title": "Python Remote Jobs - Work From Home Positions",
+      "link": "https://www.bing.com/aclick?ld=e8vU7BF3Uf2nJlvxgQsxQPMjVUCUzkHfdhbxfdjn66hXSl_2e0unyx8c5Qe9i9pBDpQAlFpL0RiCGuaSk1NP8HjLyLF7Sq8AiadkN_N6ah-4iV0PpLt3ClMGuwIOxKNBoCAeQgYPyM24jBrq01WM77ZKMQy3reqx2mQfLEEoNxZRXJdw6LIxYDr49XJGO-hR8YubdMqg&u=aHR0cHMlM2ElMmYlMmZ3d3cuam9ibGVhZHMuY29tJTJmcmVnaXN0cmF0aW9uJTJmOTklMmZqb2JzJTJmZW4lMmZnbG9iYWwlMmZQeXRob24tUmVtb3RlJTI1MjBKb2JzJTJmYWxsJTJmcHl0aG9uJTNmdXRtX3NvdXJjZSUzZG1pY3Jvc29mdC1hZHNfeHgtc2VhcmNoX1hYX18lMjZ1dG1fY29udGVudCUzZFJlbW90ZSU3Y0VOJTdjWFglN2MyX1B5dGhvbi1SZW1vdGUlMjUyMEpvYnNfc2VhcmNoLXJlbW90ZV83MCUyNnV0bV9tZWRpdW0lM2RzZWEtYWQlMjZ1dG1fY2FtcGFpZ24lM2RSZW1vdGUlN2NFTiU3Y1hYJTdjMiUyNm1zY2xraWQlM2Q3MjMxM2UxYTU3OGIxNTM4ZTAzMzU0YTQ4OGYyOGJlNA&rlid=72313e1a578b1538e03354a488f28be4",
+      "domain": "apply.workable.com",
+      "location": "remote",
+      "query": "site:apply.workable.com \"python\" \"remote\""
+    },
+    {
+      "title": "Remotebase - Current Openings",
+      "link": "https://apply.workable.com/remotebase/",
+      "domain": "apply.workable.com",
+      "location": "remote",
+      "query": "site:apply.workable.com \"python\" \"remote\""
+    },
+    {
+      "title": "Python Tutorial Writer - Real Python - apply.workable.com",
+      "link": "https://apply.workable.com/realpython/j/62F6107CD6/",
+      "domain": "apply.workable.com",
+      "location": "remote",
+      "query": "site:apply.workable.com \"python\" \"remote\""
+    },
+    {
+      "title": "Applied AI Engineer (Python/AI) - Brightplan",
+      "link": "https://apply.workable.com/brightplan/j/DC6C229CA6",
+      "domain": "apply.workable.com",
+      "location": "remote",
+      "query": "site:apply.workable.com \"python\" \"remote\""
+    },
+    {
+      "title": "Senior Python Developer - Workana",
+      "link": "https://apply.workable.com/workana-premium/j/B711CBBBFA",
+      "domain": "apply.workable.com",
+      "location": "remote",
+      "query": "site:apply.workable.com \"python\" \"remote\""
+    },
+    {
+      "title": "Software Engineer, Python - Codebase Q&A - Weekday AI",
+      "link": "https://apply.workable.com/weekday-1/j/B9AE24ACEB",
+      "domain": "apply.workable.com",
+      "location": "remote",
+      "query": "site:apply.workable.com \"python\" \"remote\""
+    },
+    {
+      "title": "apply.workable.com",
+      "link": "https://apply.workable.com/huggingface/jobs/view/81B46579FE.md",
+      "domain": "apply.workable.com",
+      "location": "remote",
+      "query": "site:apply.workable.com \"python\" \"remote\""
+    },
+    {
+      "title": "Cloudlinux - Current Openings",
+      "link": "https://apply.workable.com/cloudlinux-1/",
+      "domain": "apply.workable.com",
+      "location": "remote",
+      "query": "site:apply.workable.com \"python\" \"remote\""
+    }
+  ]
+}
