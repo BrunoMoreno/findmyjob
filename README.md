@@ -14,6 +14,18 @@ Buscador de vagas de emprego que utiliza "dorks" (consultas avançadas de busca)
 
 ## Instalação
 
+### Instalação como pacote (recomendado)
+
+```bash
+# Instalar a partir do diretório do projeto
+pip install .
+
+# Ou em modo desenvolvimento (alterações refletem imediatamente)
+pip install -e .
+```
+
+### Instalação manual (desenvolvimento)
+
 ```bash
 # Crie um ambiente virtual
 python -m venv env
@@ -26,10 +38,12 @@ pip install -r requirements.txt
 
 ## Uso
 
+Após instalar o pacote (`pip install .`), você pode usar o comando `jobsearch` diretamente.
+
 ### Modo Interativo
 
 ```bash
-python main.py
+jobsearch
 ```
 
 O script irá perguntar sobre o cargo, país, local e fontes de busca.
@@ -38,22 +52,28 @@ O script irá perguntar sobre o cargo, país, local e fontes de busca.
 
 ```bash
 # Busca geral
-python main.py "backend engineer" -l remote -l latam
+jobsearch "backend engineer" -l remote -l latam
 
 # Busca apenas no Brasil
-python main.py "backend engineer" -c br
+jobsearch "backend engineer" -c br
 
 # Brasil + remoto + apenas ATS
-python main.py "backend engineer" -c br -l remote --group ats
+jobsearch "backend engineer" -c br -l remote --group ats
 
 # Com filtros de palavras-chave
-python main.py "backend engineer" --filter-include senior --filter-exclude junior
+jobsearch "backend engineer" --filter-include senior --filter-exclude junior
 
 # Listar países disponíveis
-python main.py --list-countries
+jobsearch --list-countries
 
 # Apenas mostrar as queries (sem executar busca)
-python main.py "backend engineer" --show-queries
+jobsearch "backend engineer" --show-queries
+```
+
+Também é possível usar como módulo Python:
+
+```bash
+python -m jobsearch "backend engineer" -c br
 ```
 
 ### Usando Google Custom Search (Opcional)
@@ -61,7 +81,7 @@ python main.py "backend engineer" --show-queries
 ```bash
 export GOOGLE_API_KEY="sua_chave"
 export GOOGLE_CX="seu_cx"
-python main.py "backend engineer" -b google
+jobsearch "backend engineer" -b google
 ```
 
 ## Argumentos
@@ -96,23 +116,29 @@ O script gera dois arquivos:
 ## Testes
 
 ```bash
-python -m pytest test_main.py -v
-# ou
-python test_main.py
+# Com pytest (se instalado)
+python -m pytest tests/test_main.py -v
+
+# Ou executando diretamente
+python tests/test_main.py
 ```
 
 ## Estrutura do Projeto
 
 ```
 jobsearch/
-├── main.py                 # Script principal
-├── test_main.py            # Testes automatizados
+├── pyproject.toml          # Configuração do pacote (PEP 621)
+├── src/
+│   └── jobsearch/
+│       ├── __init__.py     # Lógica principal
+│       └── __main__.py     # Entry point para python -m
+├── tests/
+│   └── test_main.py        # Testes automatizados
 ├── requirements.txt        # Dependências
-├── .gitignore             # Arquivos ignorados pelo git
-├── __init__.py            # Torna o diretório um pacote Python
-├── env/                   # Virtual environment
-├── vagas_*.json           # Resultados em JSON
-└── vagas_*.xlsx           # Resultados em Excel
+├── .gitignore              # Arquivos ignorados pelo git
+├── env/                    # Virtual environment (opcional)
+├── vagas_*.json            # Resultados em JSON
+└── vagas_*.xlsx            # Resultados em Excel
 ```
 
 ## Exemplos de Uso
@@ -120,19 +146,19 @@ jobsearch/
 ### Buscar vagas de Python no Brasil
 
 ```bash
-python main.py "python developer" -c br -l remote
+jobsearch "python developer" -c br -l remote
 ```
 
 ### Buscar vagas de Go com filtro
 
 ```bash
-python main.py "golang" --filter-include backend --filter-exclude senior
+jobsearch "golang" --filter-include backend --filter-exclude senior
 ```
 
 ### Buscar em todos os ATS
 
 ```bash
-python main.py "backend engineer" -g ats -m 10
+jobsearch "backend engineer" -g ats -m 10
 ```
 
 ## Contribuindo
