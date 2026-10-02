@@ -263,7 +263,7 @@ Every feature is available as a library through the `findmyjob` package:
 ```python
 from findmyjob import (
     search_ddg, plan_queries, filter_jobs, extract_company, normalize_url,
-    save_json, save_csv, save_xlsx, save_to_db, db_stats,
+    save_json, save_csv, save_xlsx, save_to_db, init_db, db_stats,
     fetch_greenhouse, fetch_targets, load_targets,
     extract_ats_targets, discover_targets,
 )
@@ -293,6 +293,10 @@ ats_jobs, errors = fetch_targets(targets)
 `load_targets(path)` reads the `companies.json` format, and
 `extract_ats_targets(links)` / `discover_targets(...)` implement the discovery
 half. `AtsError` is raised for a failing provider request.
+
+`init_db(path)` creates the database file and schema up front. The CLI calls
+it automatically whenever `--db` is passed, so the database always exists —
+even when a run finds no new jobs (handy for cron and for `--strict-dates`).
 
 ## Tests
 

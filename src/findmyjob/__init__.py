@@ -1,6 +1,6 @@
 """FindMyJob - Job search via dorks and public ATS JSON APIs."""
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 __all__ = [
     "main",
@@ -14,6 +14,7 @@ __all__ = [
     "save_json",
     "save_csv",
     "save_xlsx",
+    "init_db",
     "save_to_db",
     "db_stats",
     "db_export",
@@ -47,6 +48,7 @@ from .cli import (
     db_stats,
     extract_company,
     filter_jobs,
+    init_db,
     main,
     normalize_url,
     parse_posted_date,

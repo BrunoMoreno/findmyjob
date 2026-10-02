@@ -60,6 +60,21 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def init_db(db: str | None = None) -> Path:
+    """
+    Create the database file and schema if they do not exist.
+
+    Returns the resolved database path. Useful for cronjobs, so the database
+    exists even when a run finds no new jobs.
+    """
+    conn = _connect(db)
+    try:
+        _ensure_schema(conn)
+    finally:
+        conn.close()
+    return _get_db_path(db)
+
+
 def save_to_db(jobs: list[dict], db: str | None = None) -> int:
     """
     Save jobs to a SQLite database.
