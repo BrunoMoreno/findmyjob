@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import sqlite3
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from findmyjob import console
@@ -18,7 +21,7 @@ from findmyjob.ats import (
     fetch_targets,
     load_targets,
 )
-from findmyjob.cli import _dedup_normalized
+from findmyjob.cli import _dedup_normalized, init_db
 from findmyjob.dedup import normalize_url
 from findmyjob.discover import extract_ats_target, extract_ats_targets, save_targets
 from findmyjob.enrich import extract_company
@@ -160,6 +163,38 @@ class TestDiscover(unittest.TestCase):
         self.addCleanup(os.remove, path)
         merged = save_targets(path, {"lever": ["b"], "ashby": ["c"]}, merge=True)
         self.assertEqual(merged, {"lever": ["a", "b"], "ashby": ["c"]})
+
+
+class TestInitDb(unittest.TestCase):
+    def test_creates_file_and_schema(self):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        path = os.path.join(tmp, "new.db")
+        returned = init_db(path)
+        self.assertTrue(os.path.exists(path))
+        self.assertEqual(returned, Path(path).resolve())
+        conn = sqlite3.connect(path)
+        try:
+            tables = {r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'")}
+        finally:
+            conn.close()
+        self.assertIn("jobs", tables)
+
+    def test_main_creates_db_even_without_jobs(self):
+        import findmyjob.cli as cli
+
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        self.addCleanup(setattr, console, "QUIET", False)
+        path = os.path.join(tmp, "empty.db")
+
+        with patch.object(cli, "search_ddg", return_value=[]), \
+                patch.object(cli, "BACKENDS", {"ddg": cli.search_ddg}):
+            rc = cli.main(["dev", "--db", path, "--no-json", "--no-xlsx",
+                           "--delay", "0", "-m", "1", "-q"])
+        self.assertEqual(rc, 0)
+        self.assertTrue(os.path.exists(path))
 
 
 class TestDedupFix(unittest.TestCase):

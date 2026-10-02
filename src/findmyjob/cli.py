@@ -34,7 +34,7 @@ from .ats import PROVIDERS, AtsError, fetch_targets, load_targets
 from .config import ATS, BOARDS, COUNTRIES, GROUPS
 from .console import log, paint, setup_logging
 from .dates import filter_jobs, parse_posted_date
-from .db import _get_db_path, db_export, db_purge, db_stats, save_to_db
+from .db import _get_db_path, db_export, db_purge, db_stats, init_db, save_to_db
 from .dedup import normalize_url
 from .discover import discover_targets, extract_ats_target, extract_ats_targets, save_targets
 from .enrich import extract_company
@@ -55,7 +55,8 @@ __all__ = [
     "AtsError", "SearchError", "ask", "country_term", "db_command", "db_export",
     "db_purge", "db_stats", "default_basename", "discover_targets", "domains_for",
     "extract_ats_target", "extract_ats_targets", "extract_company", "fetch_targets",
-    "filter_jobs", "interactive_prompts", "load_targets", "main", "normalize_url",
+    "filter_jobs", "init_db", "interactive_prompts", "load_targets", "main",
+    "normalize_url",
     "parse_posted_date", "plan_queries", "save_csv", "save_json", "save_targets",
     "save_to_db", "save_xlsx", "search_ddg", "search_google",
 ]
@@ -238,6 +239,7 @@ def _ats_fetch(args: argparse.Namespace) -> int:
 
     if args.db:
         try:
+            init_db(args.db)
             inserted = save_to_db(jobs, args.db)
             log.info("%d new jobs saved to the database %s", inserted, _get_db_path(args.db))
         except Exception as e:  # noqa: BLE001
@@ -490,6 +492,7 @@ def main(argv=None) -> int:
 
     if args.db:
         try:
+            init_db(args.db)
             inserted = save_to_db(jobs, args.db)
             log.info("%d new jobs saved to the database %s", inserted, _get_db_path(args.db))
         except Exception as e:  # noqa: BLE001
