@@ -149,6 +149,76 @@ def parse_posted_date(value, now: datetime | None = None) -> datetime | None:
     return None
 
 
+# ----------------------------------------------------------- enriquecimento --
+
+# Padrões que expõem o nome da empresa em URLs de ATS/portais.
+_COMPANY_URL_PATTERNS = [
+    re.compile(r"jobs\.lever\.co/([^/?#]+)", re.I),
+    re.compile(r"(?:boards|job-boards)\.greenhouse\.io/([^/?#]+)", re.I),
+    re.compile(r"apply\.workable\.com/([^/?#]+)", re.I),
+    re.compile(r"jobs\.ashbyhq\.com/([^/?#]+)", re.I),
+    re.compile(r"smartrecruiters\.com/([^/?#]+)", re.I),
+    re.compile(r"indeed\.[a-z.]+/cmp/([^/?#]+)", re.I),
+    re.compile(r"glassdoor\.[a-z.]+/(?:Overview|Jobs)/[^/]*?EI_IE\d+\.\d+,\d+_([^/?#]+)", re.I),
+]
+
+# Títulos costumam vir como "Vaga na Empresa", "Vaga - Empresa", "Vaga | Empresa"
+_TITLE_COMPANY_PATTERNS = [
+    re.compile(r"\s+(?:at|@)\s+([A-Z][\w&.\- ]{1,40})$"),
+    re.compile(r"\s+[-–|]\s+([A-Z][\w&.\- ]{1,40})$"),
+]
+
+_SUBDOMAIN_ATS = [
+    re.compile(r"^(?P<company>[^.]+)\.gupy\.io$", re.I),
+    re.compile(r"^(?P<company>[^.]+)\.(?:wd\d+\.)?myworkdayjobs\.com$", re.I),
+]
+
+
+def _pretty_company(token: str) -> str:
+    """Converte slug/domínio em nome legível: 'acme-corp' -> 'Acme Corp'."""
+    token = token.strip()
+    token = re.sub(r"\.(com|io|co|jobs|net|org).*$", "", token, flags=re.I)
+    token = re.sub(r"[-_+]+", " ", token)
+    token = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", token)
+    token = re.sub(r"\s+", " ", token).strip()
+    if not token:
+        return ""
+    if token.islower() or token.isupper():
+        return token.title()
+    return token
+
+
+def extract_company(link: str = "", title: str = "") -> str:
+    """
+    Extrai o nome da empresa a partir do link (ATS/portais) ou do título.
+
+    Retorna string vazia quando não for possível identificar.
+    """
+    from urllib.parse import urlsplit
+
+    if link:
+        try:
+            host = urlsplit(link).netloc.lower().split(":")[0]
+        except ValueError:
+            host = ""
+        for pattern in _SUBDOMAIN_ATS:
+            m = pattern.match(host)
+            if m:
+                return _pretty_company(m.group("company"))
+        for pattern in _COMPANY_URL_PATTERNS:
+            m = pattern.search(link)
+            if m:
+                return _pretty_company(m.group(1))
+
+    if title:
+        clean = title.strip()
+        for pattern in _TITLE_COMPANY_PATTERNS:
+            m = pattern.search(clean)
+            if m:
+                return _pretty_company(m.group(1))
+    return ""
+
+
 # Portais genéricos (funcionam para busca geral)
 BOARDS = ["indeed.com", "linkedin.com/jobs", "glassdoor.com"]
 
@@ -682,8 +752,18 @@ def interactive_prompts(args: argparse.Namespace) -> None:
     exclude = ask("Palavras-chave excluir (vírgula)", "")
     args.filter_exclude = [x.strip() for x in exclude.split(",") if x.strip()]
 
+    max_days_raw = ask("Idade máxima da vaga em dias (0 desativa)", str(args.max_days))
+    if max_days_raw.isdigit():
+        args.max_days = int(max_days_raw)
+
     args.output = ask("Nome base dos arquivos (gera .json e .xlsx)",
                       default_basename(args.role))
+
+    print(paint("\nSalvar em banco SQLite?", "bold"))
+    db_path = ask("Caminho do banco (vazio = não)", "")
+    args.db = db_path or None
+
+    args.csv = ask("Também salvar CSV? (s/N)", "n").lower() in ("s", "sim", "y", "yes")
     print()
 
 
@@ -708,7 +788,7 @@ def save_xlsx(path: str, meta: dict, jobs: list[dict]) -> bool:
     ws = wb.active
     ws.title = "Vagas"
 
-    headers = ["#", "Título", "Link", "Domínio", "Local", "Query"]
+    headers = ["#", "Título", "Empresa", "Link", "Domínio", "Local", "Query", "Descrição"]
     ws.append(headers)
     for cell in ws[1]:
         cell.font = Font(bold=True, color="FFFFFF")
@@ -716,13 +796,22 @@ def save_xlsx(path: str, meta: dict, jobs: list[dict]) -> bool:
         cell.alignment = Alignment(vertical="center")
 
     for i, j in enumerate(jobs, start=1):
-        ws.append([i, j["title"], j["link"], j["domain"], j["location"], j["query"]])
-        link_cell = ws.cell(row=i + 1, column=3)
-        link_cell.hyperlink = j["link"]
+        ws.append([i, j.get("title", ""), j.get("company", ""), j.get("link", ""),
+                   j.get("domain", ""), j.get("location", ""), j.get("query", ""),
+                   j.get("description", "")])
+        link_cell = ws.cell(row=i + 1, column=4)
+        link_cell.hyperlink = j.get("link", "")
         link_cell.font = Font(color="0563C1", underline="single")
 
-    for col, width in zip("ABCDEF", (5, 60, 70, 24, 22, 60), strict=True):
-        ws.column_dimensions[col].width = width
+    # Larguras dinâmicas com base no conteúdo (com limites razoáveis).
+    caps = (5, 55, 28, 60, 22, 20, 45, 70)
+    for idx, cap in enumerate(caps, start=1):
+        longest = len(str(headers[idx - 1]))
+        for row in ws.iter_rows(min_row=2, min_col=idx, max_col=idx,
+                                values_only=True):
+            if row[0]:
+                longest = max(longest, len(str(row[0])))
+        ws.column_dimensions[get_column_letter(idx)].width = min(longest + 2, cap)
     ws.freeze_panes = "A2"
     if jobs:
         ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}{len(jobs) + 1}"
@@ -735,6 +824,26 @@ def save_xlsx(path: str, meta: dict, jobs: list[dict]) -> bool:
     info.column_dimensions["B"].width = 40
 
     wb.save(path)
+    return True
+
+
+_CSV_FIELDS = ["title", "company", "link", "domain", "location", "query",
+               "posted_at", "description"]
+
+
+def save_csv(path: str, jobs: list[dict]) -> bool:
+    """Salva as vagas em CSV (UTF-8). Retorna True em caso de sucesso."""
+    import csv
+
+    try:
+        with open(path, "w", newline="", encoding="utf-8-sig") as fh:
+            writer = csv.DictWriter(fh, fieldnames=_CSV_FIELDS, extrasaction="ignore")
+            writer.writeheader()
+            for j in jobs:
+                writer.writerow({k: j.get(k, "") or "" for k in _CSV_FIELDS})
+    except OSError as e:
+        print(paint(f"[aviso] não foi possível gerar o CSV: {e}", "yellow"))
+        return False
     return True
 
 
@@ -839,6 +948,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--min-date", help="data mínima de publicação (YYYY-MM-DD)")
     p.add_argument("--max-date", help="data máxima de publicação (YYYY-MM-DD)")
     p.add_argument("--db", help="salvar resultados em banco SQLite (ex.: jobsearch.db)")
+    p.add_argument("--csv", action="store_true", help="também salvar arquivo CSV")
     p.add_argument("--no-json", action="store_true", help="não salvar arquivo JSON")
     p.add_argument("--no-xlsx", action="store_true", help="não salvar arquivo XLSX")
     p.add_argument("-q", "--quiet", action="store_true", help="suprime saída de progresso")
@@ -907,11 +1017,14 @@ def main(argv=None) -> int:
                 print(paint("   (nenhum resultado novo)", "dim"))
             for r in new:
                 seen.add(r["link"])
+                snippet = r.get("snippet", "") or ""
                 jobs.append({"title": r["title"], "link": r["link"],
                              "domain": item["domain"], "location": item["location"],
                              "query": item["query"],
                              "source": item["domain"],
-                             "snippet": r.get("snippet", ""),
+                             "company": extract_company(r["link"], r["title"]),
+                             "description": snippet,
+                             "snippet": snippet,
                              "posted_at": r.get("posted_at") or r.get("date")
                              or r.get("published")})
                 if not QUIET:
@@ -957,6 +1070,8 @@ def main(argv=None) -> int:
         saved_list.append(f"{base}.json")
     if not args.no_xlsx and save_xlsx(f"{base}.xlsx", meta, jobs):
         saved_list.append(f"{base}.xlsx")
+    if args.csv and save_csv(f"{base}.csv", jobs):
+        saved_list.append(f"{base}.csv")
 
     if args.db:
         try:
