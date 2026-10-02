@@ -102,10 +102,14 @@ are attributable per run.
 - **Zero-result warning**: a company that returns 0 jobs is usually a wrong
   slug. Alert on it instead of silently monitoring nothing.
 - **Exit codes**: `2` means every query/target failed — alert on it.
-- **Structured logs**: pipe `--log-file` into your log stack; run a worker per
-  source so failures are attributable.
-- **Metrics** worth tracking: jobs fetched, new jobs, errors per provider,
-  request latency, number of targets checked.
+- **Structured logs**: pass `--log-json` to render every line as one JSON object
+  (`ts`, `level`, `logger`, `message` plus structured fields), then pipe
+  `--log-file` into your log stack; run a worker per source so failures are
+  attributable.
+- **Run metrics**: `--metrics-file` writes a single JSON summary per run
+  (`targets`, `fetched`, `inserted`, `errors`, `status`, `duration_s`); the same
+  summary is stored in the `runs` table when `--db` is used. Track jobs fetched,
+  new jobs, errors per provider, request latency and number of targets checked.
 - **Dead-man's switch**: a successful run should ping a healthcheck; a missed
   run pages you.
 

@@ -143,6 +143,39 @@ Codes `1` and `2` make the tool easy to monitor from a scheduler.
 | `-q, --quiet` | Suppress progress output |
 | `-v, --verbose` | Detailed logging |
 | `--log-file` | Log file (append) |
+| `--log-json` | Write logs as JSON lines (structured logging) |
+| `--metrics-file` | Write a JSON run summary to this file |
+
+## Structured logging and metrics
+
+`--log-json` renders every log line as one JSON object (`ts`, `level`, `logger`,
+`message` plus any structured fields), so a log stack can ingest runs without
+parsing free text. `--metrics-file` writes a single JSON summary at the end of
+the run:
+
+```json
+{
+  "kind": "ats",
+  "scope": "companies.json",
+  "targets": 120,
+  "fetched": 431,
+  "inserted": 12,
+  "errors": 2,
+  "status": "partial",
+  "duration_s": 8.41
+}
+```
+
+```bash
+findmyjob "python developer" -c br --db ~/findmyjob.db \
+  --log-json --log-file ~/findmyjob.jsonl --metrics-file ~/metrics.json --quiet
+
+findmyjob ats fetch -t companies.json --db ~/findmyjob.db \
+  --log-json --metrics-file ~/metrics.json --quiet
+```
+
+The metrics file is written even with `--quiet`. When `--db` is used the same
+summary is stored in the `runs` table (see [Database](database.md#run-records)).
 
 !!! note "Workday and Workable"
     Workday (`myworkdayjobs.com`) and Workable (`apply.workable.com`) are
