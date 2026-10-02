@@ -40,6 +40,7 @@ from .dedup import normalize_url
 from .discover import discover_targets, extract_ats_target, extract_ats_targets, save_targets
 from .enrich import extract_company
 from .interactive import ask, default_basename, interactive_prompts
+from .models import JobPosting
 from .output import save_csv, save_json, save_xlsx
 from .search import (
     BACKENDS,
@@ -57,6 +58,7 @@ __all__ = [
     "db_purge", "db_stats", "default_basename", "discover_targets", "domains_for",
     "extract_ats_target", "extract_ats_targets", "extract_company", "fetch_targets",
     "filter_jobs", "init_db", "interactive_prompts", "load_targets", "main",
+    "JobPosting",
     "normalize_url",
     "parse_posted_date", "plan_queries", "save_csv", "save_json", "save_targets",
     "save_to_db", "save_xlsx", "search_ddg", "search_google",
