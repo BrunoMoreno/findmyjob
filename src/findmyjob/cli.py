@@ -35,7 +35,18 @@ from .ats import PROVIDERS, AtsError, fetch_targets, load_targets
 from .config import ATS, BOARDS, COUNTRIES, GROUPS
 from .console import log, paint, setup_logging
 from .dates import filter_jobs, parse_posted_date
-from .db import _get_db_path, db_export, db_purge, db_stats, init_db, save_to_db
+from .db import (
+    _get_db_path,
+    db_export,
+    db_purge,
+    db_runs,
+    db_stats,
+    init_db,
+    mark_closed,
+    mark_stale,
+    record_run,
+    save_to_db,
+)
 from .dedup import normalize_url
 from .discover import discover_targets, extract_ats_target, extract_ats_targets, save_targets
 from .enrich import extract_company
@@ -55,12 +66,13 @@ from .search import (
 __all__ = [
     "ATS", "BOARDS", "COUNTRIES", "GROUPS", "PROVIDERS", "BACKENDS",
     "AtsError", "SearchError", "ask", "country_term", "db_command", "db_export",
-    "db_purge", "db_stats", "default_basename", "discover_targets", "domains_for",
+    "db_purge", "db_runs", "db_stats", "default_basename", "discover_targets", "domains_for",
     "extract_ats_target", "extract_ats_targets", "extract_company", "fetch_targets",
     "filter_jobs", "init_db", "interactive_prompts", "load_targets", "main",
     "JobPosting",
+    "mark_closed", "mark_stale",
     "normalize_url",
-    "parse_posted_date", "plan_queries", "save_csv", "save_json", "save_targets",
+    "parse_posted_date", "plan_queries", "record_run", "save_csv", "save_json", "save_targets",
     "save_to_db", "save_xlsx", "search_ddg", "search_google",
 ]
 
@@ -135,8 +147,15 @@ def _write_outputs(args: argparse.Namespace, jobs: list[dict], meta: dict,
 
 # ------------------------------------------------------------- db command --
 
+def _confirm(prompt: str) -> bool:
+    """Ask a yes/no question on the terminal (default: no)."""
+    resp = input(f"{prompt} [y/N]: ").strip().lower()
+    return resp in ("s", "y", "sim", "yes")
+
+
 def db_command(argv: list[str]) -> int:
-    """Subcommands to inspect/manage the database: stats, export, purge."""
+    """Subcommands to inspect/manage the database: stats, export, purge,
+    runs, mark-stale and mark-closed."""
     parser = argparse.ArgumentParser(prog="findmyjob db",
                                      description="SQLite database utilities")
     _add_version_arg(parser)
@@ -151,12 +170,33 @@ def db_command(argv: list[str]) -> int:
     p_export.add_argument("--format", choices=["json", "csv"], default="json")
     p_export.add_argument("--limit", type=int, help="maximum number of jobs")
     p_export.add_argument("--since-days", type=int, help="only the last N days")
+    p_export.add_argument("--status", choices=["active", "stale", "closed"],
+                          help="only jobs with this status")
 
     p_purge = sub.add_parser("purge", help="remove old jobs")
     p_purge.add_argument("--older-than", type=int, metavar="DAYS",
                          help="remove jobs last seen more than N days ago")
     p_purge.add_argument("-y", "--yes", action="store_true",
                          help="do not ask for confirmation")
+
+    p_runs = sub.add_parser("runs", help="list recent ingest runs")
+    p_runs.add_argument("--limit", type=int, default=20,
+                        help="number of runs (default: 20)")
+    p_runs.add_argument("--json", action="store_true", help="JSON output")
+
+    p_stale = sub.add_parser("mark-stale", help="mark jobs not seen recently as stale")
+    p_stale.add_argument("--older-than", type=int, required=True, metavar="DAYS",
+                         help="jobs last seen more than N days ago")
+    p_stale.add_argument("--source", help="only jobs from this source/provider")
+    p_stale.add_argument("-y", "--yes", action="store_true",
+                         help="do not ask for confirmation")
+
+    p_closed = sub.add_parser("mark-closed", help="mark stale jobs as closed")
+    p_closed.add_argument("--older-than", type=int, required=True, metavar="DAYS",
+                          help="jobs stale for more than N days")
+    p_closed.add_argument("--source", help="only jobs from this source/provider")
+    p_closed.add_argument("-y", "--yes", action="store_true",
+                          help="do not ask for confirmation")
 
     args = parser.parse_args(argv)
     db = args.db
@@ -174,6 +214,10 @@ def db_command(argv: list[str]) -> int:
             print("\n" + paint("By source:", "bold"))
             for src, count in stats["by_source"]:
                 print(f"  {count:>5}  {src}")
+        if stats.get("by_status"):
+            print("\n" + paint("By status:", "bold"))
+            for status, count in stats["by_status"]:
+                print(f"  {count:>5}  {status}")
         if stats["by_day"]:
             print("\n" + paint("By day (recent):", "bold"))
             for day, count in stats["by_day"]:
@@ -182,7 +226,7 @@ def db_command(argv: list[str]) -> int:
 
     if args.action == "export":
         content = db_export(db, fmt=args.format, limit=args.limit,
-                            since_days=args.since_days)
+                            since_days=args.since_days, status=args.status)
         if args.output:
             Path(args.output).write_text(content, encoding="utf-8")
             print(f"Exported to {args.output}")
@@ -194,12 +238,47 @@ def db_command(argv: list[str]) -> int:
         if not args.yes:
             target = (f"jobs older than {args.older_than} days"
                       if args.older_than else "ALL jobs")
-            resp = input(f"Confirm removal of {target}? [y/N]: ").strip().lower()
-            if resp not in ("s", "y", "sim", "yes"):
+            if not _confirm(f"Confirm removal of {target}?"):
                 print("Cancelled.")
                 return 1
         deleted = db_purge(db, older_than_days=args.older_than)
         print(f"{deleted} job(s) removed.")
+        return 0
+
+    if args.action == "runs":
+        runs = db_runs(db, limit=args.limit)
+        if args.json:
+            print(json.dumps(runs, ensure_ascii=False, indent=2))
+            return 0
+        if not runs:
+            print("No runs recorded yet.")
+            return 0
+        print(paint("Recent runs:", "bold"))
+        for run in runs:
+            print(f"  #{run['id']:<4} {run['finished_at']}  {run['kind']:<6} "
+                  f"{run['status']:<7} fetched={run['fetched']} "
+                  f"inserted={run['inserted']} errors={run['errors']}  "
+                  f"{run['scope'] or ''}")
+        return 0
+
+    if args.action == "mark-stale":
+        where = f" from {args.source}" if args.source else ""
+        if not args.yes and not _confirm(
+                f"Mark active jobs{where} not seen in {args.older_than} days as stale?"):
+            print("Cancelled.")
+            return 1
+        changed = mark_stale(db, args.older_than, source=args.source)
+        print(f"{changed} job(s) marked as stale.")
+        return 0
+
+    if args.action == "mark-closed":
+        where = f" from {args.source}" if args.source else ""
+        if not args.yes and not _confirm(
+                f"Mark jobs{where} stale for {args.older_than} days as closed?"):
+            print("Cancelled.")
+            return 1
+        changed = mark_closed(db, args.older_than, source=args.source)
+        print(f"{changed} job(s) marked as closed.")
         return 0
 
     return 1  # pragma: no cover
@@ -208,6 +287,7 @@ def db_command(argv: list[str]) -> int:
 # ------------------------------------------------------------- ats command --
 
 def _ats_fetch(args: argparse.Namespace) -> int:
+    started = datetime.now().isoformat(timespec="seconds")
     targets_path = Path(args.targets)
     if not targets_path.exists():
         log.error("targets file not found: %s", targets_path)
@@ -251,6 +331,12 @@ def _ats_fetch(args: argparse.Namespace) -> int:
         try:
             init_db(args.db)
             inserted = save_to_db(jobs, args.db)
+            run_status = ("failed" if total_targets and len(errors) >= total_targets
+                          else "partial" if errors else "ok")
+            record_run(args.db, "ats", scope=str(targets_path),
+                       targets=total_targets, fetched=len(jobs), inserted=inserted,
+                       errors=len(errors), status=run_status, started_at=started,
+                       details={"providers": sorted(targets)})
             log.info("%d new jobs saved to the database %s", inserted, _get_db_path(args.db))
         except Exception as e:  # noqa: BLE001
             log.error("failed to save to the database: %s", e)
@@ -435,6 +521,7 @@ def main(argv=None) -> int:
 
     scope = country["names"][0] if country else "general"
     log.info("Scope: %s | %d queries", scope, len(plan))
+    started = datetime.now().isoformat(timespec="seconds")
 
     from . import console
 
@@ -506,6 +593,13 @@ def main(argv=None) -> int:
         try:
             init_db(args.db)
             inserted = save_to_db(jobs, args.db)
+            run_status = ("failed" if plan and errors >= len(plan)
+                          else "partial" if errors else "ok")
+            record_run(args.db, "search", scope=scope, targets=len(plan),
+                       fetched=len(jobs), inserted=inserted, errors=errors,
+                       status=run_status, started_at=started,
+                       details={"role": args.role, "backend": args.backend,
+                                "country": args.country or ""})
             log.info("%d new jobs saved to the database %s", inserted, _get_db_path(args.db))
         except Exception as e:  # noqa: BLE001
             log.error("failed to save to the database: %s", e)

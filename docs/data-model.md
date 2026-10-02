@@ -91,9 +91,30 @@ Created with `--db`. Table `jobs`:
 | `salary` | TEXT | Reserved; not populated by the current fetchers |
 | `company` | TEXT | Best-effort |
 | `description` | TEXT | |
+| `provider` | TEXT | ATS provider (`greenhouse`, `lever`, `ashby`, `smartrecruiters`) |
+| `external_id` | TEXT | Posting id at the provider (for idempotent upserts) |
+| `status` | TEXT | `active` (default), `stale` or `closed` |
+| `status_changed_at` | TEXT | ISO 8601, when `status` last changed |
 | `first_seen_at` | TEXT | ISO 8601, set on insert |
 | `last_seen_at` | TEXT | ISO 8601, refreshed every run |
 | `created_at` | TEXT | Not null, set on insert |
 | `updated_at` | TEXT | Not null |
 
-Indexes: `idx_jobs_link_key` (unique), `idx_jobs_created_at`, `idx_jobs_source`.
+Indexes: `idx_jobs_link_key` (unique), `idx_jobs_created_at`, `idx_jobs_source`,
+`idx_jobs_status`, `idx_jobs_source_external_id`.
+
+Table `runs` (one row per ingest run):
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | INTEGER | Primary key, autoincrement |
+| `kind` | TEXT | `search` or `ats` |
+| `scope` | TEXT | Country/query scope or targets file |
+| `targets` | INTEGER | Targets/queries attempted |
+| `fetched` | INTEGER | Jobs fetched |
+| `inserted` | INTEGER | New jobs inserted |
+| `errors` | INTEGER | Failures |
+| `status` | TEXT | `ok`, `partial` or `failed` |
+| `details` | TEXT | JSON blob (role, backend, providers, …) |
+| `started_at` | TEXT | ISO 8601 |
+| `finished_at` | TEXT | ISO 8601 |
