@@ -202,6 +202,8 @@ ruff check .
 
 ## Project Structure
 
+Files tracked in the repository:
+
 ```
 findmyjob/
 ├── .github/
@@ -210,24 +212,25 @@ findmyjob/
 │       └── publish-pypi.yml   # CI: publish to PyPI on release
 ├── assets/
 │   └── logo.png               # Project logo
+├── docs/
+│   └── improvements.md        # Analysis and improvement plan
 ├── src/
 │   └── findmyjob/
-│       ├── __init__.py        # Package exports
+│       ├── __init__.py        # Package exports and version
 │       ├── cli.py             # Core logic + CLI
 │       └── __main__.py        # Entry point for python -m
 ├── tests/
 │   └── test_main.py           # Automated tests
-├── pyproject.toml             # Package configuration (PEP 621)
-├── requirements.txt           # Dependencies
-├── README.md                  # Documentation
-├── LICENSE                    # MIT license
 ├── .gitignore                 # Files ignored by git
-├── env/                       # Virtual environment (optional)
-├── findmyjob.db               # SQLite database (generated with --db)
-├── jobs_*.json                # JSON results
-├── jobs_*.csv                 # CSV results (with --csv)
-└── jobs_*.xlsx                # Excel results
+├── LICENSE                    # MIT license
+├── pyproject.toml             # Package configuration (PEP 621)
+├── README.md                  # Documentation
+└── requirements.txt           # Pinned dependencies
 ```
+
+Generated at runtime and not tracked (see [Output](#output)): the SQLite
+database (`findmyjob.db`) and the `jobs_*.json`, `jobs_*.csv` and
+`jobs_*.xlsx` result files. Virtual environments such as `env/` are local too.
 
 ## Usage Examples
 
