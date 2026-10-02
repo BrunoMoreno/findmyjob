@@ -14,6 +14,7 @@ import argparse
 import json
 import os
 import re
+import sqlite3
 import sys
 import time
 from datetime import datetime
@@ -253,6 +254,101 @@ def filter_jobs(jobs: list[dict], min_date: str | None = None,
     return filtered
 
 
+# ------------------------------------------------------------------- sqlite --
+
+def _get_db_path(db: str | None) -> Path:
+    if db:
+        return Path(db).expanduser().resolve()
+    return Path.cwd() / "jobsearch.db"
+
+
+def _ensure_schema(conn: sqlite3.Connection) -> None:
+    cur = conn.cursor()
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS jobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            link TEXT NOT NULL UNIQUE,
+            source TEXT,
+            domain TEXT,
+            location TEXT,
+            query TEXT,
+            posted_at TEXT,
+            salary TEXT,
+            company TEXT,
+            description TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    cur.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON jobs(created_at);
+        """
+    )
+    cur.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_jobs_source ON jobs(source);
+        """
+    )
+    conn.commit()
+
+
+def save_to_db(jobs: list[dict], db: str | None = None) -> int:
+    """
+    Salva vagas em banco SQLite.
+
+    Evita duplicados pelo link (UNIQUE). Retorna número de novas vagas inseridas.
+    """
+    if not jobs:
+        return 0
+
+    db_path = _get_db_path(db)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    conn = sqlite3.connect(db_path)
+    try:
+        _ensure_schema(conn)
+        cur = conn.cursor()
+        now = datetime.now().isoformat(timespec="seconds")
+        inserted = 0
+        for j in jobs:
+            try:
+                cur.execute(
+                    """
+                    INSERT OR IGNORE INTO jobs (
+                        title, link, source, domain, location, query,
+                        posted_at, salary, company, description, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        j.get("title", ""),
+                        j.get("link", ""),
+                        j.get("source") or j.get("domain"),
+                        j.get("domain") or j.get("source"),
+                        j.get("location"),
+                        j.get("query"),
+                        j.get("posted_at") or j.get("date") or j.get("published"),
+                        j.get("salary"),
+                        j.get("company"),
+                        j.get("description"),
+                        now,
+                        now,
+                    ),
+                )
+                if cur.rowcount > 0:
+                    inserted += 1
+            except sqlite3.Error:
+                continue
+        conn.commit()
+    finally:
+        conn.close()
+
+    return inserted
+
+
 # ------------------------------------------------------------- interactive --
 
 def ask(prompt: str, default: str = "") -> str:
@@ -382,6 +478,9 @@ def main(argv=None) -> None:
                    help="palavras-chave que devem estar no título")
     p.add_argument("--filter-exclude", nargs="+", default=[],
                    help="palavras-chave que NÃO devem estar no título")
+    p.add_argument("--db", help="salvar resultados em banco SQLite (ex.: jobsearch.db)")
+    p.add_argument("--no-json", action="store_true", help="não salvar arquivo JSON")
+    p.add_argument("--no-xlsx", action="store_true", help="não salvar arquivo XLSX")
     args = p.parse_args(argv)
 
     global USE_COLOR
@@ -459,12 +558,24 @@ def main(argv=None) -> None:
         "filter_exclude": args.filter_exclude,
         "searched_at": datetime.now().isoformat(timespec="seconds"),
     }
-    save_json(f"{base}.json", meta, jobs)
-    saved = [f"{base}.json"]
-    if save_xlsx(f"{base}.xlsx", meta, jobs):
-        saved.append(f"{base}.xlsx")
-    print("\n" + paint(f"{len(jobs)} vagas únicas encontradas.", "bold", "green"),
-          "Salvo em:", paint(", ".join(saved), "cyan"))
+    saved_list = []
+    if not args.no_json:
+        save_json(f"{base}.json", meta, jobs)
+        saved_list.append(f"{base}.json")
+    if not args.no_xlsx and save_xlsx(f"{base}.xlsx", meta, jobs):
+        saved_list.append(f"{base}.xlsx")
+
+    if args.db:
+        try:
+            inserted = save_to_db(jobs, args.db)
+            db_path = _get_db_path(args.db)
+            print(f"  DB: {inserted} novas inseridas em {db_path}")
+        except Exception as e:
+            print(paint(f"  [erro DB] {e}", "red"))
+
+    print("\n" + paint(f"{len(jobs)} vagas únicas encontradas.", "bold", "green"))
+    if saved_list:
+        print("Salvo em:", paint(", ".join(saved_list), "cyan"))
 
 
 if __name__ == "__main__":
