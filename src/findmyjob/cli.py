@@ -2,13 +2,13 @@
 Busca de vagas via dorks (site:dominio "cargo" "local").
 
 Modo interativo (pergunta tudo):
-    getajob
+    findmyjob
 
 Modo direto:
-    getajob "backend engineer" -l remote -l latam            # geral
-    getajob "backend engineer" -c br                         # só Brasil
-    getajob "backend engineer" -c br -l remote --group ats   # Brasil + remoto
-    getajob --list-countries
+    findmyjob "backend engineer" -l remote -l latam            # geral
+    findmyjob "backend engineer" -c br                         # só Brasil
+    findmyjob "backend engineer" -c br -l remote --group ats   # Brasil + remoto
+    findmyjob --list-countries
 """
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ def paint(text: str, *styles: str) -> str:
 
 # ------------------------------------------------------------------ logging --
 
-log = logging.getLogger("getajob")
+log = logging.getLogger("findmyjob")
 QUIET = False
 
 
@@ -513,7 +513,7 @@ def normalize_url(url: str) -> str:
 def _get_db_path(db: str | None) -> Path:
     if db:
         return Path(db).expanduser().resolve()
-    return Path.cwd() / "getajob.db"
+    return Path.cwd() / "findmyjob.db"
 
 
 def _connect(db: str | None) -> sqlite3.Connection:
@@ -851,9 +851,9 @@ def save_csv(path: str, jobs: list[dict]) -> bool:
 
 def db_command(argv: list[str]) -> int:
     """Subcomandos para consultar/gerenciar o banco: stats, export, purge."""
-    parser = argparse.ArgumentParser(prog="getajob db",
+    parser = argparse.ArgumentParser(prog="findmyjob db",
                                      description="Utilitários do banco SQLite")
-    parser.add_argument("--db", help="caminho do banco (padrão: ./getajob.db)")
+    parser.add_argument("--db", help="caminho do banco (padrão: ./findmyjob.db)")
     sub = parser.add_subparsers(dest="action", required=True)
 
     p_stats = sub.add_parser("stats", help="mostra estatísticas do banco")
@@ -947,7 +947,7 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="descarta vagas sem data identificável")
     p.add_argument("--min-date", help="data mínima de publicação (YYYY-MM-DD)")
     p.add_argument("--max-date", help="data máxima de publicação (YYYY-MM-DD)")
-    p.add_argument("--db", help="salvar resultados em banco SQLite (ex.: getajob.db)")
+    p.add_argument("--db", help="salvar resultados em banco SQLite (ex.: findmyjob.db)")
     p.add_argument("--csv", action="store_true", help="também salvar arquivo CSV")
     p.add_argument("--no-json", action="store_true", help="não salvar arquivo JSON")
     p.add_argument("--no-xlsx", action="store_true", help="não salvar arquivo XLSX")
@@ -960,7 +960,7 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
 
-    # Subcomandos de banco: getajob db <stats|export|purge>
+    # Subcomandos de banco: findmyjob db <stats|export|purge>
     if argv and argv[0] == "db":
         return db_command(argv[1:])
 

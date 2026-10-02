@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Testes automatizados para o getajob."""
+"""Testes automatizados para o findmyjob."""
 
 import json
 import os
@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 # Adiciona o diretório pai ao path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from getajob.cli import (
+from findmyjob.cli import (
     ATS,
     BOARDS,
     COUNTRIES,

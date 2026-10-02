@@ -1,6 +1,6 @@
-"""GetAJob - Buscador de vagas via dorks."""
+"""FindMyJob - Buscador de vagas via dorks."""
 
-__version__ = "0.4.1"
+__version__ = "0.1.0"
 __all__ = [
     "main",
     "search_ddg",
