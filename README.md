@@ -116,7 +116,7 @@ jobsearch "backend engineer" -b google
 
 ## Saída
 
-O script gera dois arquivos:
+O script pode gerar os seguintes arquivos (controláveis por flags):
 
 1. **`.json`**: Dados brutos com metadados da busca
 2. **`.xlsx`**: Planilha formatada com:
