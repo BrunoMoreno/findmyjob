@@ -9,6 +9,7 @@ Buscador de vagas de emprego que utiliza "dorks" (consultas avançadas de busca)
 - **Dois backends de busca**: DuckDuckGo (padrão) ou Google Custom Search API
 - **Filtros por palavras-chave**: Incluir ou excluir termos nos resultados
 - **Saída em JSON e XLSX**: Planilha formatada com hyperlinks e filtros
+- **Salvamento em banco SQLite**: Ideal para cronjobs e evitar duplicados
 - **Retry automático**: Tentativas configuráveis em caso de falha de rede
 - **Modo interativo ou CLI**: Interface amigável ou argumentos de linha de comando
 
@@ -63,6 +64,12 @@ jobsearch "backend engineer" -c br -l remote --group ats
 # Com filtros de palavras-chave
 jobsearch "backend engineer" --filter-include senior --filter-exclude junior
 
+# Salvar em banco SQLite (ideal para cronjobs)
+jobsearch "python developer" -c br --db ~/jobsearch.db
+
+# Salvar apenas no banco, sem arquivos
+jobsearch "golang" --db jobsearch.db --no-json --no-xlsx
+
 # Listar países disponíveis
 jobsearch --list-countries
 
@@ -103,6 +110,9 @@ jobsearch "backend engineer" -b google
 | `--list-countries` | Listar países disponíveis |
 | `--filter-include` | Palavras-chave que devem estar no título |
 | `--filter-exclude` | Palavras-chave que NÃO devem estar no título |
+| `--db` | Salvar resultados em banco SQLite (ex.: jobsearch.db) |
+| `--no-json` | Não salvar arquivo JSON |
+| `--no-xlsx` | Não salvar arquivo XLSX |
 
 ## Saída
 
@@ -112,6 +122,7 @@ O script gera dois arquivos:
 2. **`.xlsx`**: Planilha formatada com:
    - Aba "Vagas": Lista de vagas com hyperlinks
    - Aba "Busca": Metadados da pesquisa
+3. **Banco SQLite** (opcional): Salva no banco com deduplicação automática por link - ideal para execução periódica via cron.
 
 ## Testes
 
