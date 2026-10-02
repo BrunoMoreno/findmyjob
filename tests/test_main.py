@@ -6,6 +6,7 @@ import os
 import sys
 import tempfile
 import unittest
+from io import StringIO
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -13,20 +14,27 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from jobsearch.cli import (
-    COUNTRIES,
     ATS,
     BOARDS,
-    BACKENDS,
+    COUNTRIES,
+    SearchError,
     country_term,
-    domains_for,
-    plan_queries,
-    filter_jobs,
+    db_command,
+    db_export,
+    db_purge,
+    db_stats,
     default_basename,
+    domains_for,
+    filter_jobs,
+    main,
+    normalize_url,
+    parse_posted_date,
+    plan_queries,
     save_json,
+    save_to_db,
     save_xlsx,
     search_ddg,
     search_google,
-    SearchError,
 )
 
 
@@ -266,6 +274,161 @@ class TestCountries(unittest.TestCase):
 
     def test_country_count(self):
         self.assertEqual(len(COUNTRIES), 11)
+
+
+class TestParsePostedDate(unittest.TestCase):
+    """Testes para parse_posted_date()."""
+
+    def setUp(self):
+        from datetime import datetime
+        self.now = datetime(2026, 10, 2, 12, 0, 0)
+
+    def test_relative_days(self):
+        dt = parse_posted_date("2 days ago", now=self.now)
+        self.assertEqual(dt.date().isoformat(), "2026-09-30")
+
+    def test_relative_portuguese(self):
+        dt = parse_posted_date("há 3 dias", now=self.now)
+        self.assertEqual(dt.date().isoformat(), "2026-09-29")
+
+    def test_today_and_yesterday(self):
+        self.assertEqual(parse_posted_date("today", now=self.now), self.now)
+        self.assertEqual(parse_posted_date("ontem", now=self.now).date().isoformat(),
+                         "2026-10-01")
+
+    def test_numeric_days(self):
+        self.assertEqual(parse_posted_date(5, now=self.now).date().isoformat(),
+                         "2026-09-27")
+
+    def test_iso(self):
+        self.assertEqual(parse_posted_date("2026-09-28", now=self.now).date().isoformat(),
+                         "2026-09-28")
+
+    def test_unknown(self):
+        self.assertIsNone(parse_posted_date("sem data", now=self.now))
+        self.assertIsNone(parse_posted_date(None, now=self.now))
+
+
+class TestNormalizeUrl(unittest.TestCase):
+    """Testes para normalize_url()."""
+
+    def test_removes_tracking(self):
+        url = "HTTPS://Example.com/job/1/?utm_source=x&gclid=abc&a=1#frag"
+        self.assertEqual(normalize_url(url), "https://example.com/job/1?a=1")
+
+    def test_empty(self):
+        self.assertEqual(normalize_url(""), "")
+
+
+class TestFilterJobsDates(unittest.TestCase):
+    """Testes para o filtro de datas."""
+
+    def _jobs(self):
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        return [
+            {"title": "recente", "link": "1",
+             "posted_at": (now - timedelta(days=1)).isoformat()},
+            {"title": "antiga", "link": "2",
+             "posted_at": (now - timedelta(days=30)).isoformat()},
+            {"title": "snippet", "link": "3", "snippet": "posted 2 days ago"},
+            {"title": "sem data", "link": "4"},
+        ]
+
+    def test_max_days_keeps_unknown(self):
+        result = filter_jobs(self._jobs(), max_days=3)
+        titles = {j["title"] for j in result}
+        self.assertEqual(titles, {"recente", "snippet", "sem data"})
+
+    def test_max_days_strict(self):
+        result = filter_jobs(self._jobs(), max_days=3, keep_unknown_dates=False)
+        titles = {j["title"] for j in result}
+        self.assertEqual(titles, {"recente", "snippet"})
+
+    def test_max_days_zero_disables(self):
+        self.assertEqual(len(filter_jobs(self._jobs(), max_days=0)), 4)
+
+    def test_min_and_max_date(self):
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        jobs = [
+            {"title": "alvo", "link": "1", "posted_at": now.isoformat()},
+            {"title": "antiga", "link": "2",
+             "posted_at": (now - timedelta(days=40)).isoformat()},
+            {"title": "sem data", "link": "3"},
+        ]
+        lo = (now - timedelta(days=5)).strftime("%Y-%m-%d")
+        hi = now.strftime("%Y-%m-%d")
+        result = filter_jobs(jobs, min_date=lo, max_date=hi)
+        self.assertEqual({j["title"] for j in result}, {"alvo", "sem data"})
+        strict = filter_jobs(jobs, min_date=lo, max_date=hi, keep_unknown_dates=False)
+        self.assertEqual({j["title"] for j in strict}, {"alvo"})
+
+
+class TestDatabase(unittest.TestCase):
+    """Testes para persistência em SQLite."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.db = os.path.join(self.tmp, "test.db")
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_save_and_dedupe(self):
+        jobs = [
+            {"title": "A", "link": "https://x.com/1?utm_source=a"},
+            {"title": "B", "link": "https://x.com/2"},
+            {"title": "C", "link": "https://x.com/1"},
+        ]
+        self.assertEqual(save_to_db(jobs, self.db), 2)
+        self.assertEqual(save_to_db(jobs, self.db), 0)
+        self.assertEqual(db_stats(self.db)["total"], 2)
+
+    def test_export_json_and_csv(self):
+        save_to_db([{"title": "A", "link": "https://x.com/1"}], self.db)
+        self.assertEqual(json.loads(db_export(self.db, fmt="json"))[0]["title"], "A")
+        self.assertIn("title", db_export(self.db, fmt="csv").splitlines()[0])
+
+    def test_purge(self):
+        save_to_db([{"title": "A", "link": "https://x.com/1"}], self.db)
+        self.assertEqual(db_purge(self.db), 1)
+        self.assertEqual(db_stats(self.db)["total"], 0)
+
+    def test_db_command_stats(self):
+        save_to_db([{"title": "A", "link": "https://x.com/1"}], self.db)
+        with patch("sys.stdout", new=StringIO()) as out:
+            rc = db_command(["--db", self.db, "stats"])
+        self.assertEqual(rc, 0)
+        self.assertIn("Total de vagas", out.getvalue())
+
+
+class TestMainCli(unittest.TestCase):
+    """Testes para o entry point."""
+
+    def test_show_queries_returns_zero(self):
+        with patch("sys.stdout", new=StringIO()):
+            rc = main(["backend engineer", "--show-queries", "-c", "br"])
+        self.assertEqual(rc, 0)
+
+    def test_list_countries_returns_zero(self):
+        with patch("sys.stdout", new=StringIO()):
+            rc = main(["--list-countries"])
+        self.assertEqual(rc, 0)
+
+    def test_db_dispatch(self):
+        tmp = tempfile.mkdtemp()
+        try:
+            save_to_db([{"title": "A", "link": "https://x.com/1"}],
+                       os.path.join(tmp, "t.db"))
+            with patch("sys.stdout", new=StringIO()) as out:
+                rc = main(["db", "--db", os.path.join(tmp, "t.db"), "stats"])
+            self.assertEqual(rc, 0)
+            self.assertIn("Total de vagas", out.getvalue())
+        finally:
+            import shutil
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 if __name__ == "__main__":

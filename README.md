@@ -8,8 +8,11 @@ Buscador de vagas de emprego que utiliza "dorks" (consultas avançadas de busca)
 - **Suporte a 11 países**: Brasil, Portugal, EUA, Reino Unido, Canadá, Alemanha, Espanha, México, Argentina, Colômbia e Chile
 - **Dois backends de busca**: DuckDuckGo (padrão) ou Google Custom Search API
 - **Filtros por palavras-chave**: Incluir ou excluir termos nos resultados
+- **Filtro por data**: Idade máxima, data mínima/máxima e modo estrito
 - **Saída em JSON e XLSX**: Planilha formatada com hyperlinks e filtros
-- **Salvamento em banco SQLite**: Ideal para cronjobs e evitar duplicados
+- **Banco SQLite**: Deduplicação por URL normalizada, ideal para cronjobs
+- **Utilitários de banco**: Subcomandos `db stats`, `db export` e `db purge`
+- **Logging e exit codes**: `--quiet`, `--log-file` e código de saída para cronjobs
 - **Retry automático**: Tentativas configuráveis em caso de falha de rede
 - **Modo interativo ou CLI**: Interface amigável ou argumentos de linha de comando
 
@@ -70,6 +73,15 @@ jobsearch "python developer" -c br --db ~/jobsearch.db
 # Salvar apenas no banco, sem arquivos
 jobsearch "golang" --db jobsearch.db --no-json --no-xlsx
 
+# Somente vagas publicadas nos últimos 3 dias (descarta as sem data)
+jobsearch "backend engineer" -c br --max-days 3 --strict-dates
+
+# Filtrar por intervalo de datas
+jobsearch "backend engineer" --min-date 2026-09-01 --max-date 2026-10-01
+
+# Modo silencioso + log em arquivo (bom para cron)
+jobsearch "backend engineer" --db ~/jobsearch.db --quiet --log-file ~/jobsearch.log
+
 # Listar países disponíveis
 jobsearch --list-countries
 
@@ -81,6 +93,34 @@ Também é possível usar como módulo Python:
 
 ```bash
 python -m jobsearch "backend engineer" -c br
+```
+
+### Utilitários do banco
+
+```bash
+# Estatísticas do banco
+jobsearch db --db ~/jobsearch.db stats
+
+# Exportar tudo para JSON ou CSV (stdout ou arquivo)
+jobsearch db --db ~/jobsearch.db export --format csv -o vagas.csv
+
+# Exportar apenas as vagas dos últimos 7 dias
+jobsearch db --db ~/jobsearch.db export --since-days 7
+
+# Remover vagas vistas há mais de 30 dias (pede confirmação)
+jobsearch db --db ~/jobsearch.db purge --older-than 30
+```
+
+### Uso em cronjob
+
+O comando retorna código de saída `2` quando **todas** as queries falham e `1`
+em erros fatais — útil para monitoramento. Exemplo de entrada no `crontab`:
+
+```cron
+# Todo dia às 8h: busca vagas recentes e grava no banco
+0 8 * * * /usr/local/bin/jobsearch "backend engineer" -c br -l remote \
+  --max-days 3 --strict-dates --db "$HOME/jobsearch.db" \
+  --no-json --no-xlsx --quiet --log-file "$HOME/jobsearch.log"
 ```
 
 ### Usando Google Custom Search (Opcional)
@@ -110,9 +150,16 @@ jobsearch "backend engineer" -b google
 | `--list-countries` | Listar países disponíveis |
 | `--filter-include` | Palavras-chave que devem estar no título |
 | `--filter-exclude` | Palavras-chave que NÃO devem estar no título |
+| `--max-days` | Idade máxima da vaga em dias (0 desativa; padrão: 3) |
+| `--strict-dates` | Descarta vagas sem data identificável |
+| `--min-date` | Data mínima de publicação (YYYY-MM-DD) |
+| `--max-date` | Data máxima de publicação (YYYY-MM-DD) |
 | `--db` | Salvar resultados em banco SQLite (ex.: jobsearch.db) |
 | `--no-json` | Não salvar arquivo JSON |
 | `--no-xlsx` | Não salvar arquivo XLSX |
+| `-q, --quiet` | Suprime saída de progresso |
+| `-v, --verbose` | Log detalhado |
+| `--log-file` | Arquivo de log (append) |
 
 ## Saída
 
@@ -122,16 +169,19 @@ O script pode gerar os seguintes arquivos (controláveis por flags):
 2. **`.xlsx`**: Planilha formatada com:
    - Aba "Vagas": Lista de vagas com hyperlinks
    - Aba "Busca": Metadados da pesquisa
-3. **Banco SQLite** (opcional): Salva no banco com deduplicação automática por link - ideal para execução periódica via cron.
+3. **Banco SQLite** (opcional): Salva no banco com deduplicação automática por URL normalizada — ideal para execução periódica via cron.
 
 ## Testes
 
 ```bash
-# Com pytest (se instalado)
-python -m pytest tests/test_main.py -v
+# Instale as dependências de desenvolvimento
+pip install -e ".[dev]"
 
-# Ou executando diretamente
-python tests/test_main.py
+# Rode os testes
+pytest -v
+
+# Verificação de lint
+ruff check .
 ```
 
 ## Estrutura do Projeto
@@ -140,6 +190,7 @@ python tests/test_main.py
 jobsearch/
 ├── .github/
 │   └── workflows/
+│       ├── tests.yml          # CI: testes e lint em push/PR
 │       └── publish-pypi.yml   # CI: publica no PyPI ao criar release
 ├── src/
 │   └── jobsearch/

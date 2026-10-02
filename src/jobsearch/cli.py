@@ -10,14 +10,17 @@ Modo direto:
     jobsearch "backend engineer" -c br -l remote --group ats   # Brasil + remoto
     jobsearch --list-countries
 """
+from __future__ import annotations
+
 import argparse
 import json
+import logging
 import os
 import re
 import sqlite3
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import requests
@@ -36,6 +39,114 @@ def paint(text: str, *styles: str) -> str:
     if not USE_COLOR or not styles:
         return text
     return "\033[" + ";".join(_CODES[x] for x in styles) + "m" + text + "\033[0m"
+
+
+# ------------------------------------------------------------------ logging --
+
+log = logging.getLogger("jobsearch")
+QUIET = False
+
+
+def setup_logging(log_file: str | None = None, quiet: bool = False,
+                  verbose: bool = False) -> None:
+    """Configura logging para stdout/stderr e, opcionalmente, arquivo."""
+    global QUIET
+    QUIET = quiet
+    level = logging.DEBUG if verbose else logging.INFO
+    log.setLevel(level)
+    log.handlers.clear()
+
+    fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s",
+                            datefmt="%Y-%m-%d %H:%M:%S")
+
+    stream = logging.StreamHandler(sys.stderr)
+    stream.setFormatter(fmt)
+    stream.setLevel(logging.WARNING if quiet else level)
+    log.addHandler(stream)
+
+    if log_file:
+        fileh = logging.FileHandler(log_file, encoding="utf-8")
+        fileh.setFormatter(fmt)
+        fileh.setLevel(level)
+        log.addHandler(fileh)
+
+    log.propagate = False
+
+
+# ------------------------------------------------------------------- datas --
+
+_RELATIVE_PATTERNS = [
+    (re.compile(r"\b(\d+)\s*(?:minute|min)s?\s+ago\b", re.I), "minutes"),
+    (re.compile(r"\b(\d+)\s*(?:hour|hr)s?\s+ago\b", re.I), "hours"),
+    (re.compile(r"\b(\d+)\s*days?\s+ago\b", re.I), "days"),
+    (re.compile(r"\b(\d+)\s*(?:week|wk)s?\s+ago\b", re.I), "weeks"),
+    (re.compile(r"\b(\d+)\s*months?\s+ago\b", re.I), "months"),
+    (re.compile(r"\b(\d+)\s*(?:minuto|min)s?\s+atr[áa]s\b", re.I), "minutes"),
+    (re.compile(r"\b(\d+)\s*horas?\s+atr[áa]s\b", re.I), "hours"),
+    (re.compile(r"\b(\d+)\s*dias?\s+atr[áa]s\b", re.I), "days"),
+    (re.compile(r"\b(\d+)\s*semanas?\s+atr[áa]s\b", re.I), "weeks"),
+    (re.compile(r"\b(\d+)\s*meses?\s+atr[áa]s\b", re.I), "months"),
+    # "há 3 dias", "ha 2 horas"
+    (re.compile(r"\bh[áa]\s+(\d+)\s*(?:minuto|min)s?\b", re.I), "minutes"),
+    (re.compile(r"\bh[áa]\s+(\d+)\s*horas?\b", re.I), "hours"),
+    (re.compile(r"\bh[áa]\s+(\d+)\s*dias?\b", re.I), "days"),
+    (re.compile(r"\bh[áa]\s+(\d+)\s*semanas?\b", re.I), "weeks"),
+    (re.compile(r"\bh[áa]\s+(\d+)\s*meses?\b", re.I), "months"),
+]
+
+
+def parse_posted_date(value, now: datetime | None = None) -> datetime | None:
+    """
+    Extrai uma data de publicação a partir de formatos comuns.
+
+    Aceita datetime, número (dias atrás), ISO ("2026-09-28"), texto relativo
+    ("2 days ago", "há 3 dias", "today", "yesterday").
+    """
+    if value is None:
+        return None
+    now = now or datetime.now()
+
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, (int, float)):
+        # convenção: número = dias atrás
+        return now - timedelta(days=float(value))
+
+    text = str(value).strip()
+    if not text:
+        return None
+
+    low = text.lower()
+    if low in ("today", "hoje"):
+        return now
+    if low in ("yesterday", "ontem"):
+        return now - timedelta(days=1)
+
+    for pattern, unit in _RELATIVE_PATTERNS:
+        m = pattern.search(text)
+        if m:
+            amount = int(m.group(1))
+            if unit == "minutes":
+                return now - timedelta(minutes=amount)
+            if unit == "hours":
+                return now - timedelta(hours=amount)
+            if unit == "days":
+                return now - timedelta(days=amount)
+            if unit == "weeks":
+                return now - timedelta(weeks=amount)
+            if unit == "months":
+                return now - timedelta(days=30 * amount)
+
+    # ISO / dateutil-like "YYYY-MM-DD[ HH:MM:SS]"
+    candidate = text.replace("T", " ").split(".")[0]
+    candidate = re.sub(r"(Z|[+-]\d{2}:?\d{2})$", "", candidate).strip()
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d",
+                "%d/%m/%Y", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(candidate, fmt)
+        except ValueError:
+            continue
+    return None
 
 
 # Portais genéricos (funcionam para busca geral)
@@ -136,8 +247,8 @@ def search_ddg(query: str, max_results: int, country: dict | None,
     """Busca no DuckDuckGo com retry automático."""
     try:
         from ddgs import DDGS
-    except ImportError:
-        raise SearchError("ddgs não instalado. Execute: pip install ddgs")
+    except ImportError as e:
+        raise SearchError("ddgs não instalado. Execute: pip install ddgs") from e
 
     kwargs = {"max_results": max_results}
     if country:
@@ -147,7 +258,8 @@ def search_ddg(query: str, max_results: int, country: dict | None,
     for attempt in range(retries):
         try:
             results = DDGS().text(query, **kwargs)
-            return [{"title": r.get("title", ""), "link": r.get("href", "")}
+            return [{"title": r.get("title", ""), "link": r.get("href", ""),
+                     "snippet": r.get("body", "")}
                     for r in results]
         except Exception as e:
             last_error = e
@@ -178,7 +290,9 @@ def search_google(query: str, max_results: int, country: dict | None,
             resp = requests.get("https://www.googleapis.com/customsearch/v1",
                                 params=params, timeout=15)
             resp.raise_for_status()
-            return [{"title": i.get("title", ""), "link": i.get("link", "")}
+            return [{"title": i.get("title", ""), "link": i.get("link", ""),
+                     "snippet": i.get("snippet", ""),
+                     "posted_at": _google_posted_date(i)}
                     for i in resp.json().get("items", [])]
         except requests.exceptions.RequestException as e:
             last_error = e
@@ -191,6 +305,18 @@ def search_google(query: str, max_results: int, country: dict | None,
     raise SearchError(f"Falha após {retries} tentativas: {last_error}")
 
 
+def _google_posted_date(item: dict) -> str | None:
+    """Tenta extrair a data de publicação do pagemap do Google CSE."""
+    metatags = (item.get("pagemap") or {}).get("metatags") or []
+    keys = ("article:published_time", "datepublished", "date", "og:updated_time",
+            "article:modified_time", "pubdate")
+    for mt in metatags:
+        for k in keys:
+            if k in mt and mt[k]:
+                return mt[k]
+    return None
+
+
 BACKENDS = {"ddg": search_ddg, "google": search_google}
 
 
@@ -200,7 +326,8 @@ def filter_jobs(jobs: list[dict], min_date: str | None = None,
                 max_date: str | None = None,
                 keywords: list[str] | None = None,
                 exclude_keywords: list[str] | None = None,
-                max_days: int = 3) -> list[dict]:
+                max_days: int = 0,
+                keep_unknown_dates: bool = True) -> list[dict]:
     """
     Filtra vagas por data e palavras-chave.
 
@@ -210,7 +337,8 @@ def filter_jobs(jobs: list[dict], min_date: str | None = None,
         max_date: Data máxima (formato: YYYY-MM-DD)
         keywords: Palavras-chave que devem estar no título
         exclude_keywords: Palavras-chave que NÃO devem estar no título
-        max_days: Idade máxima em dias (padrão: 3)
+        max_days: Idade máxima em dias (0 desativa)
+        keep_unknown_dates: manter vagas sem data identificável
 
     Returns:
         Lista de vagas filtradas
@@ -225,41 +353,105 @@ def filter_jobs(jobs: list[dict], min_date: str | None = None,
         filtered = [j for j in filtered
                     if not any(kw.lower() in j["title"].lower() for kw in exclude_keywords)]
 
-    # Filtro por idade máxima (últimos N dias) - por padrão 3 dias
-    from datetime import datetime, timedelta
-    if max_days > 0:
+    if max_days and max_days > 0:
         cutoff = datetime.now() - timedelta(days=max_days)
         filtered_new = []
         for j in filtered:
-            posted = j.get("posted_at") or j.get("date") or j.get("published") or j.get("age_days")
-            keep = True
-            if posted is not None:
-                try:
-                    # Se for número (dias atrás)
-                    if isinstance(posted, (int, float)):
-                        if posted > max_days:
-                            keep = False
-                    else:
-                        # Tentar parse de string
-                        p = str(posted).replace("T", " ").split(".")[0]
-                        dt = datetime.fromisoformat(p)
-                        if dt < cutoff:
-                            keep = False
-                except Exception:
-                    keep = True  # se não conseguir parsear, mantem
-            if keep:
+            posted = _job_posted_datetime(j)
+            if posted is None:
+                if keep_unknown_dates:
+                    filtered_new.append(j)
+                continue
+            if posted >= cutoff:
                 filtered_new.append(j)
         filtered = filtered_new
+
+    if min_date:
+        try:
+            lo = datetime.strptime(min_date, "%Y-%m-%d")
+            filtered = [j for j in filtered
+                        if _in_date_range(j, lo, None, keep_unknown_dates)]
+        except ValueError:
+            log.warning("min_date inválida (use YYYY-MM-DD): %s", min_date)
+
+    if max_date:
+        try:
+            hi = datetime.strptime(max_date, "%Y-%m-%d") + timedelta(days=1)
+            filtered = [j for j in filtered
+                        if _in_date_range(j, None, hi, keep_unknown_dates)]
+        except ValueError:
+            log.warning("max_date inválida (use YYYY-MM-DD): %s", max_date)
 
     return filtered
 
 
+def _in_date_range(job: dict, lo: datetime | None, hi: datetime | None,
+                   keep_unknown: bool) -> bool:
+    """Verifica se a vaga está no intervalo [lo, hi). Sem data, segue keep_unknown."""
+    posted = _job_posted_datetime(job)
+    if posted is None:
+        return keep_unknown
+    if lo is not None and posted < lo:
+        return False
+    if hi is not None and posted >= hi:
+        return False
+    return True
+
+
+def _job_posted_datetime(job: dict) -> datetime | None:
+    """Retorna a data de publicação da vaga, se identificável."""
+    for key in ("posted_at", "date", "published", "age_days"):
+        value = job.get(key)
+        if value is None:
+            continue
+        dt = parse_posted_date(value)
+        if dt is not None:
+            return dt
+    # tenta extrair de snippet/body ("2 days ago")
+    for key in ("snippet", "body"):
+        text = job.get(key)
+        if text:
+            dt = parse_posted_date(text)
+            if dt is not None:
+                return dt
+    return None
+
+
 # ------------------------------------------------------------------- sqlite --
+
+_TRACKING_PARAMS = re.compile(
+    r"^(utm_|gclid|fbclid|mc_|ref$|referrer$|source$|trk$|tracking)", re.I)
+
+
+def normalize_url(url: str) -> str:
+    """Normaliza URL para deduplicação: remove tracking, fragmento e barra final."""
+    if not url:
+        return url
+    from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+    try:
+        parts = urlsplit(url.strip())
+    except ValueError:
+        return url.strip()
+    query = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True)
+             if not _TRACKING_PARAMS.match(k)]
+    path = parts.path.rstrip("/") or "/"
+    netloc = parts.netloc.lower()
+    return urlunsplit((parts.scheme.lower(), netloc, path,
+                       urlencode(query), ""))
+
 
 def _get_db_path(db: str | None) -> Path:
     if db:
         return Path(db).expanduser().resolve()
     return Path.cwd() / "jobsearch.db"
+
+
+def _connect(db: str | None) -> sqlite3.Connection:
+    db_path = _get_db_path(db)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
 def _ensure_schema(conn: sqlite3.Connection) -> None:
@@ -270,6 +462,7 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
             link TEXT NOT NULL UNIQUE,
+            link_key TEXT,
             source TEXT,
             domain TEXT,
             location TEXT,
@@ -278,21 +471,21 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
             salary TEXT,
             company TEXT,
             description TEXT,
+            first_seen_at TEXT,
+            last_seen_at TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
         """
     )
-    cur.execute(
-        """
-        CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON jobs(created_at);
-        """
-    )
-    cur.execute(
-        """
-        CREATE INDEX IF NOT EXISTS idx_jobs_source ON jobs(source);
-        """
-    )
+    # Migração para bancos criados por versões anteriores.
+    cols = {row[1] for row in cur.execute("PRAGMA table_info(jobs)")}
+    for col in ("link_key", "first_seen_at", "last_seen_at"):
+        if col not in cols:
+            cur.execute(f"ALTER TABLE jobs ADD COLUMN {col} TEXT")
+    cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_link_key ON jobs(link_key)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON jobs(created_at)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_jobs_source ON jobs(source)")
     conn.commit()
 
 
@@ -300,32 +493,35 @@ def save_to_db(jobs: list[dict], db: str | None = None) -> int:
     """
     Salva vagas em banco SQLite.
 
-    Evita duplicados pelo link (UNIQUE). Retorna número de novas vagas inseridas.
+    Deduplica pela URL normalizada (sem tracking). Retorna o número de vagas
+    novas inseridas. Vagas já existentes têm `last_seen_at` atualizado.
     """
     if not jobs:
         return 0
 
-    db_path = _get_db_path(db)
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-
-    conn = sqlite3.connect(db_path)
+    conn = _connect(db)
     try:
         _ensure_schema(conn)
         cur = conn.cursor()
         now = datetime.now().isoformat(timespec="seconds")
         inserted = 0
         for j in jobs:
+            link = j.get("link", "")
+            if not link:
+                continue
             try:
                 cur.execute(
                     """
                     INSERT OR IGNORE INTO jobs (
-                        title, link, source, domain, location, query,
-                        posted_at, salary, company, description, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        title, link, link_key, source, domain, location, query,
+                        posted_at, salary, company, description,
+                        first_seen_at, last_seen_at, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         j.get("title", ""),
-                        j.get("link", ""),
+                        link,
+                        normalize_url(link),
                         j.get("source") or j.get("domain"),
                         j.get("domain") or j.get("source"),
                         j.get("location"),
@@ -333,20 +529,107 @@ def save_to_db(jobs: list[dict], db: str | None = None) -> int:
                         j.get("posted_at") or j.get("date") or j.get("published"),
                         j.get("salary"),
                         j.get("company"),
-                        j.get("description"),
+                        j.get("snippet") or j.get("description"),
+                        now,
+                        now,
                         now,
                         now,
                     ),
                 )
                 if cur.rowcount > 0:
                     inserted += 1
-            except sqlite3.Error:
+                else:
+                    cur.execute(
+                        "UPDATE jobs SET last_seen_at = ?, updated_at = ? WHERE link_key = ?",
+                        (now, now, normalize_url(link)),
+                    )
+            except sqlite3.Error as e:
+                log.warning("Falha ao salvar vaga no banco: %s", e)
                 continue
         conn.commit()
     finally:
         conn.close()
 
     return inserted
+
+
+def db_stats(db: str | None = None) -> dict:
+    """Retorna estatísticas do banco."""
+    conn = _connect(db)
+    try:
+        _ensure_schema(conn)
+        cur = conn.cursor()
+        total = cur.execute("SELECT COUNT(*) FROM jobs").fetchone()[0]
+        first = cur.execute("SELECT MIN(created_at) FROM jobs").fetchone()[0]
+        last = cur.execute("SELECT MAX(created_at) FROM jobs").fetchone()[0]
+        by_source = cur.execute(
+            "SELECT COALESCE(source, domain) AS s, COUNT(*) c FROM jobs "
+            "GROUP BY s ORDER BY c DESC"
+        ).fetchall()
+        by_day = cur.execute(
+            "SELECT substr(created_at, 1, 10) AS d, COUNT(*) c FROM jobs "
+            "GROUP BY d ORDER BY d DESC LIMIT 14"
+        ).fetchall()
+    finally:
+        conn.close()
+    return {
+        "total": total,
+        "first_seen": first,
+        "last_seen": last,
+        "by_source": [(r["s"], r["c"]) for r in by_source],
+        "by_day": [(r["d"], r["c"]) for r in by_day],
+    }
+
+
+def db_export(db: str | None = None, fmt: str = "json", limit: int | None = None,
+              since_days: int | None = None) -> str:
+    """Exporta vagas do banco como JSON ou CSV (retorna o texto)."""
+    import csv
+    import io
+
+    conn = _connect(db)
+    try:
+        _ensure_schema(conn)
+        sql = "SELECT * FROM jobs"
+        params: list = []
+        if since_days:
+            cutoff = (datetime.now() - timedelta(days=since_days)).isoformat(timespec="seconds")
+            sql += " WHERE created_at >= ?"
+            params.append(cutoff)
+        sql += " ORDER BY created_at DESC"
+        if limit:
+            sql += " LIMIT ?"
+            params.append(limit)
+        rows = [dict(r) for r in conn.execute(sql, params)]
+    finally:
+        conn.close()
+
+    if fmt == "csv":
+        buf = io.StringIO()
+        if rows:
+            writer = csv.DictWriter(buf, fieldnames=list(rows[0].keys()))
+            writer.writeheader()
+            writer.writerows(rows)
+        return buf.getvalue()
+    return json.dumps(rows, ensure_ascii=False, indent=2)
+
+
+def db_purge(db: str | None = None, older_than_days: int | None = None) -> int:
+    """Remove vagas antigas. Sem `older_than_days`, limpa todo o banco."""
+    conn = _connect(db)
+    try:
+        _ensure_schema(conn)
+        cur = conn.cursor()
+        if older_than_days and older_than_days > 0:
+            cutoff = (datetime.now() - timedelta(days=older_than_days)).isoformat(timespec="seconds")
+            cur.execute("DELETE FROM jobs WHERE created_at < ?", (cutoff,))
+        else:
+            cur.execute("DELETE FROM jobs")
+        deleted = cur.rowcount
+        conn.commit()
+    finally:
+        conn.close()
+    return deleted
 
 
 # ------------------------------------------------------------- interactive --
@@ -438,7 +721,7 @@ def save_xlsx(path: str, meta: dict, jobs: list[dict]) -> bool:
         link_cell.hyperlink = j["link"]
         link_cell.font = Font(color="0563C1", underline="single")
 
-    for col, width in zip("ABCDEF", (5, 60, 70, 24, 22, 60)):
+    for col, width in zip("ABCDEF", (5, 60, 70, 24, 22, 60), strict=True):
         ws.column_dimensions[col].width = width
     ws.freeze_panes = "A2"
     if jobs:
@@ -455,9 +738,80 @@ def save_xlsx(path: str, meta: dict, jobs: list[dict]) -> bool:
     return True
 
 
+# ------------------------------------------------------------- db command --
+
+def db_command(argv: list[str]) -> int:
+    """Subcomandos para consultar/gerenciar o banco: stats, export, purge."""
+    parser = argparse.ArgumentParser(prog="jobsearch db",
+                                     description="Utilitários do banco SQLite")
+    parser.add_argument("--db", help="caminho do banco (padrão: ./jobsearch.db)")
+    sub = parser.add_subparsers(dest="action", required=True)
+
+    p_stats = sub.add_parser("stats", help="mostra estatísticas do banco")
+    p_stats.add_argument("--json", action="store_true", help="saída em JSON")
+
+    p_export = sub.add_parser("export", help="exporta as vagas")
+    p_export.add_argument("-o", "--output", help="arquivo de saída (padrão: stdout)")
+    p_export.add_argument("--format", choices=["json", "csv"], default="json")
+    p_export.add_argument("--limit", type=int, help="máximo de vagas")
+    p_export.add_argument("--since-days", type=int, help="somente dos últimos N dias")
+
+    p_purge = sub.add_parser("purge", help="remove vagas antigas")
+    p_purge.add_argument("--older-than", type=int, metavar="DIAS",
+                         help="remove vagas vistas há mais de N dias")
+    p_purge.add_argument("-y", "--yes", action="store_true",
+                         help="não pedir confirmação")
+
+    args = parser.parse_args(argv)
+    db = args.db
+
+    if args.action == "stats":
+        stats = db_stats(db)
+        if args.json:
+            print(json.dumps(stats, ensure_ascii=False, indent=2))
+            return 0
+        print(paint("Banco:", "bold"), _get_db_path(db))
+        print(paint("Total de vagas:", "bold"), stats["total"])
+        print("Primeira:", stats["first_seen"] or "-")
+        print("Última:  ", stats["last_seen"] or "-")
+        if stats["by_source"]:
+            print("\n" + paint("Por fonte:", "bold"))
+            for src, count in stats["by_source"]:
+                print(f"  {count:>5}  {src}")
+        if stats["by_day"]:
+            print("\n" + paint("Por dia (últimos):", "bold"))
+            for day, count in stats["by_day"]:
+                print(f"  {count:>5}  {day}")
+        return 0
+
+    if args.action == "export":
+        content = db_export(db, fmt=args.format, limit=args.limit,
+                            since_days=args.since_days)
+        if args.output:
+            Path(args.output).write_text(content, encoding="utf-8")
+            print(f"Exportado para {args.output}")
+        else:
+            print(content)
+        return 0
+
+    if args.action == "purge":
+        if not args.yes:
+            target = (f"vagas mais antigas que {args.older_than} dias"
+                      if args.older_than else "TODAS as vagas")
+            resp = input(f"Confirmar remoção de {target}? [s/N]: ").strip().lower()
+            if resp not in ("s", "y", "sim", "yes"):
+                print("Cancelado.")
+                return 1
+        deleted = db_purge(db, older_than_days=args.older_than)
+        print(f"{deleted} vaga(s) removida(s).")
+        return 0
+
+    return 1  # pragma: no cover
+
+
 # -------------------------------------------------------------------- main --
 
-def main(argv=None) -> None:
+def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Busca de vagas com dorks de busca")
     p.add_argument("role", nargs="?", help='cargo, ex: "backend engineer" (omita para modo interativo)')
     p.add_argument("-c", "--country", choices=COUNTRIES,
@@ -478,19 +832,41 @@ def main(argv=None) -> None:
                    help="palavras-chave que devem estar no título")
     p.add_argument("--filter-exclude", nargs="+", default=[],
                    help="palavras-chave que NÃO devem estar no título")
+    p.add_argument("--max-days", type=int, default=3,
+                   help="idade máxima da vaga em dias (0 desativa; padrão: 3)")
+    p.add_argument("--strict-dates", action="store_true",
+                   help="descarta vagas sem data identificável")
+    p.add_argument("--min-date", help="data mínima de publicação (YYYY-MM-DD)")
+    p.add_argument("--max-date", help="data máxima de publicação (YYYY-MM-DD)")
     p.add_argument("--db", help="salvar resultados em banco SQLite (ex.: jobsearch.db)")
     p.add_argument("--no-json", action="store_true", help="não salvar arquivo JSON")
     p.add_argument("--no-xlsx", action="store_true", help="não salvar arquivo XLSX")
+    p.add_argument("-q", "--quiet", action="store_true", help="suprime saída de progresso")
+    p.add_argument("-v", "--verbose", action="store_true", help="log detalhado")
+    p.add_argument("--log-file", help="arquivo de log (append)")
+    return p
+
+
+def main(argv=None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+
+    # Subcomandos de banco: jobsearch db <stats|export|purge>
+    if argv and argv[0] == "db":
+        return db_command(argv[1:])
+
+    p = _build_parser()
     args = p.parse_args(argv)
 
     global USE_COLOR
     if args.no_color:
         USE_COLOR = False
 
+    setup_logging(log_file=args.log_file, quiet=args.quiet, verbose=args.verbose)
+
     if args.list_countries:
         for k, v in COUNTRIES.items():
             print(f"{paint(k, 'bold', 'cyan')}  {v['names'][0]}")
-        return
+        return 0
 
     if args.interactive or not args.role:
         interactive_prompts(args)
@@ -501,30 +877,33 @@ def main(argv=None) -> None:
     if args.show_queries:
         for item in plan:
             print(item["query"])
-        return
+        return 0
 
     scope = country["names"][0] if country else "geral"
-    print(paint("Escopo:", "bold"), paint(scope, "magenta"), "|", f"{len(plan)} queries")
+    log.info("Escopo: %s | %d queries", scope, len(plan))
 
     search = BACKENDS[args.backend]
     seen: set[str] = set()
     jobs: list[dict] = []
+    errors = 0
 
     try:
         for item in plan:
-            print("\n" + paint(f"== {item['domain']}", "bold", "cyan"),
-                  paint(f"| {item['location']} ==", "yellow"))
-            print("   " + paint(item["query"], "dim"))
+            if not QUIET:
+                print("\n" + paint(f"== {item['domain']}", "bold", "cyan"),
+                      paint(f"| {item['location']} ==", "yellow"))
+                print("   " + paint(item["query"], "dim"))
             try:
                 results = search(item["query"], args.max, country,
                                  retries=args.retries)
             except SearchError as e:
-                print(paint(f"   [erro] {e}", "red"))
+                log.error("%s", e)
+                errors += 1
                 time.sleep(args.delay)
                 continue
 
             new = [r for r in results if r["link"] and r["link"] not in seen]
-            if not new:
+            if not new and not QUIET:
                 print(paint("   (nenhum resultado novo)", "dim"))
             for r in new:
                 seen.add(r["link"])
@@ -532,18 +911,31 @@ def main(argv=None) -> None:
                              "domain": item["domain"], "location": item["location"],
                              "query": item["query"],
                              "source": item["domain"],
-                             "posted_at": r.get("posted_at") or r.get("date") or r.get("published")})
-                print(f"   {paint('-', 'green')} {paint(r['title'], 'bold', 'green')}")
-                print("     " + paint(r["link"], "blue", "underline"))
+                             "snippet": r.get("snippet", ""),
+                             "posted_at": r.get("posted_at") or r.get("date")
+                             or r.get("published")})
+                if not QUIET:
+                    print(f"   {paint('-', 'green')} {paint(r['title'], 'bold', 'green')}")
+                    print("     " + paint(r["link"], "blue", "underline"))
             time.sleep(args.delay)
     except KeyboardInterrupt:
-        print(paint("\n[interrompido] salvando o que foi encontrado até aqui...", "yellow"))
+        log.warning("interrompido; salvando o que foi encontrado até aqui...")
 
-    # Aplicar filtros
-    if args.filter_include or args.filter_exclude:
-        jobs = filter_jobs(jobs, keywords=args.filter_include,
-                          exclude_keywords=args.filter_exclude)
-        print(paint(f"\nFiltros aplicados: {len(jobs)} vagas restantes", "cyan"))
+    # Aplicar filtros (sempre que qualquer critério estiver ativo)
+    has_filter = (args.filter_include or args.filter_exclude
+                  or args.max_days > 0 or args.min_date or args.max_date)
+    if has_filter:
+        before = len(jobs)
+        jobs = filter_jobs(
+            jobs,
+            keywords=args.filter_include,
+            exclude_keywords=args.filter_exclude,
+            max_days=args.max_days,
+            min_date=args.min_date,
+            max_date=args.max_date,
+            keep_unknown_dates=not args.strict_dates,
+        )
+        log.info("Filtros aplicados: %d -> %d vagas", before, len(jobs))
 
     base = args.output or default_basename(args.role)
     base = re.sub(r"\.(json|xlsx?)$", "", base, flags=re.IGNORECASE)
@@ -556,6 +948,7 @@ def main(argv=None) -> None:
         "backend": args.backend,
         "filter_include": args.filter_include,
         "filter_exclude": args.filter_exclude,
+        "max_days": args.max_days,
         "searched_at": datetime.now().isoformat(timespec="seconds"),
     }
     saved_list = []
@@ -568,15 +961,20 @@ def main(argv=None) -> None:
     if args.db:
         try:
             inserted = save_to_db(jobs, args.db)
-            db_path = _get_db_path(args.db)
-            print(f"  DB: {inserted} novas inseridas em {db_path}")
+            log.info("%d novas vagas salvas no banco %s", inserted, _get_db_path(args.db))
         except Exception as e:
-            print(paint(f"  [erro DB] {e}", "red"))
+            log.error("falha ao salvar no banco: %s", e)
+            errors += 1
 
-    print("\n" + paint(f"{len(jobs)} vagas únicas encontradas.", "bold", "green"))
+    log.info("%d vagas únicas encontradas.", len(jobs))
     if saved_list:
-        print("Salvo em:", paint(", ".join(saved_list), "cyan"))
+        log.info("Arquivos salvos: %s", ", ".join(saved_list))
+
+    # Exit code: 2 se todas as queries falharam (útil em cronjobs)
+    if plan and errors >= len(plan):
+        return 2
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
