@@ -1,0 +1,77 @@
+site_name: FindMyJob
+site_description: Find jobs via dorks on job boards and public ATS JSON APIs.
+site_url: https://brunomoreno.github.io/findmyjob/
+repo_url: https://github.com/BrunoMoreno/findmyjob
+repo_name: BrunoMoreno/findmyjob
+edit_uri: edit/main/docs/
+copyright: MIT License
+
+theme:
+  name: material
+  logo: assets/logo.png
+  favicon: assets/logo.png
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+    - toc.follow
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Installation: installation.md
+      - Quickstart: quickstart.md
+  - User guide:
+      - CLI: cli.md
+      - ATS JSON APIs: ats.md
+      - Database: database.md
+      - Data model: data-model.md
+  - Python API: python-api.md
+  - Production: production.md
+  - Architecture: architecture.md
+  - Troubleshooting: troubleshooting.md
+  - Contributing: contributing.md
+  - Changelog:
+      - Improvements: improvements.md
+      - Releases: https://github.com/BrunoMoreno/findmyjob/releases
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+      title: On this page
+
+plugins:
+  - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/BrunoMoreno/findmyjob
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/findmyjob/
