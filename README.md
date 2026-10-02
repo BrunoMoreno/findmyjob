@@ -138,18 +138,24 @@ python tests/test_main.py
 
 ```
 jobsearch/
-├── pyproject.toml          # Configuração do pacote (PEP 621)
+├── .github/
+│   └── workflows/
+│       └── publish-pypi.yml   # CI: publica no PyPI ao criar release
 ├── src/
 │   └── jobsearch/
-│       ├── __init__.py     # Lógica principal
-│       └── __main__.py     # Entry point para python -m
+│       ├── __init__.py        # Exports do pacote
+│       ├── cli.py             # Lógica principal + CLI
+│       └── __main__.py        # Entry point para python -m
 ├── tests/
-│   └── test_main.py        # Testes automatizados
-├── requirements.txt        # Dependências
-├── .gitignore              # Arquivos ignorados pelo git
-├── env/                    # Virtual environment (opcional)
-├── vagas_*.json            # Resultados em JSON
-└── vagas_*.xlsx            # Resultados em Excel
+│   └── test_main.py           # Testes automatizados
+├── pyproject.toml             # Configuração do pacote (PEP 621)
+├── requirements.txt           # Dependências
+├── README.md                  # Documentação
+├── .gitignore                 # Arquivos ignorados pelo git
+├── env/                       # Virtual environment (opcional)
+├── jobsearch.db               # Banco SQLite (gerado com --db)
+├── vagas_*.json               # Resultados em JSON
+└── vagas_*.xlsx               # Resultados em Excel
 ```
 
 ## Exemplos de Uso
