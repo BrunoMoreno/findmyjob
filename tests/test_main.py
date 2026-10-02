@@ -365,7 +365,7 @@ class TestNormalizeUrl(unittest.TestCase):
 
 
 class TestFilterJobsDates(unittest.TestCase):
-    """Tests for o filtro de datas."""
+    """Tests for the date filter."""
 
     def _jobs(self):
         from datetime import datetime, timedelta
@@ -449,7 +449,7 @@ class TestDatabase(unittest.TestCase):
 
 
 class TestMainCli(unittest.TestCase):
-    """Tests for o entry point."""
+    """Tests for the entry point."""
 
     def test_show_queries_returns_zero(self):
         with patch("sys.stdout", new=StringIO()):

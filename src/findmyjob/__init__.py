@@ -1,6 +1,7 @@
-"""FindMyJob - Job search via dorks."""
+"""FindMyJob - Job search via dorks and public ATS JSON APIs."""
 
-__version__ = "0.1.2"
+__version__ = "0.2.0"
+
 __all__ = [
     "main",
     "search_ddg",
@@ -17,8 +18,29 @@ __all__ = [
     "db_stats",
     "db_export",
     "db_purge",
+    # ATS JSON APIs
+    "fetch_greenhouse",
+    "fetch_lever",
+    "fetch_ashby",
+    "fetch_smartrecruiters",
+    "fetch_targets",
+    "load_targets",
+    "extract_ats_target",
+    "extract_ats_targets",
+    "discover_targets",
+    "save_targets",
+    "AtsError",
 ]
 
+from .ats import (
+    AtsError,
+    fetch_ashby,
+    fetch_greenhouse,
+    fetch_lever,
+    fetch_smartrecruiters,
+    fetch_targets,
+    load_targets,
+)
 from .cli import (
     db_export,
     db_purge,
@@ -36,3 +58,4 @@ from .cli import (
     search_ddg,
     search_google,
 )
+from .discover import discover_targets, extract_ats_target, extract_ats_targets, save_targets

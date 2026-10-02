@@ -10,15 +10,19 @@ A job search tool that uses "dorks" (advanced search queries) to find job openin
 
 - **Multiple search sources**: Indeed, LinkedIn, Glassdoor + ATS (Greenhouse, Lever, Workday, SmartRecruiters, Ashby, Workable)
 - **11 countries supported**: Brazil, Portugal, USA, UK, Canada, Germany, Spain, Mexico, Argentina, Colombia and Chile
+- **Brazilian boards**: Gupy, InfoJobs, Vagas.com, Catho and Programathor (via `-c br`)
 - **Two search backends**: DuckDuckGo (default) or Google Custom Search API
+- **Public ATS JSON APIs**: Fetch structured jobs (with real posting dates) from Greenhouse, Lever, Ashby and SmartRecruiters, one request per company
+- **ATS discovery**: Find which companies use which ATS from search results, then monitor them via API
 - **Keyword filters**: Include or exclude terms from results
 - **Date filtering**: Maximum age, minimum/maximum date and strict mode
 - **Enrichment**: company extracted from the link/title and description from the snippet
 - **JSON, XLSX and CSV output**: Formatted spreadsheet with hyperlinks and filters
 - **SQLite database**: Deduplication by normalized URL, ideal for cronjobs
 - **Database utilities**: `db stats`, `db export` and `db purge` subcommands
+- **Python API**: Use the search, filtering, database and ATS functions as a library
 - **Logging and exit codes**: `--quiet`, `--log-file` and exit code for cronjobs
-- **Automatic retry**: Configurable attempts on network failure
+- **Automatic retry**: Configurable attempts on network failure (silenced by `--quiet`)
 - **Interactive mode or CLI**: Friendly interface or command-line arguments
 
 ## Installation
@@ -145,6 +149,71 @@ export GOOGLE_CX="your_cx"
 findmyjob "backend engineer" -b google
 ```
 
+## ATS JSON APIs
+
+Search dorks only return a snippet, so the posting date is unreliable. The
+public ATS JSON APIs return structured data (including a real posting date)
+and need **one request per company** instead of one query per board — much
+faster and more accurate for monitoring a fixed list of companies.
+
+Supported providers:
+
+| Provider | Endpoint | Company identifier |
+|----------|----------|--------------------|
+| Greenhouse | `boards-api.greenhouse.io` | board token (`stripe`) |
+| Lever | `api.lever.co` | company slug (`spotify`) |
+| Ashby | `api.ashbyhq.com` | job board name (`openai`) |
+| SmartRecruiters | `api.smartrecruiters.com` | company id (`Accor`) |
+
+### 1. Discover companies (dorks)
+
+Run one dork per provider and collect the company slugs found in the results:
+
+```bash
+findmyjob ats discover "backend engineer" -c br -m 10 -o companies.json
+
+# Merge with an existing file instead of overwriting it
+findmyjob ats discover "python developer" -l remote --merge -o companies.json
+
+# Preview without writing
+findmyjob ats discover "golang" --dry-run
+```
+
+This writes a targets file:
+
+```json
+{
+  "greenhouse": ["stripe", "nubank"],
+  "lever": ["spotify"],
+  "ashby": ["openai"],
+  "smartrecruiters": ["Accor"]
+}
+```
+
+### 2. Fetch jobs (JSON APIs)
+
+```bash
+# Fetch every target, keep jobs from the last 30 days
+findmyjob ats fetch -t companies.json --db ~/findmyjob.db
+
+# Only some providers, with keyword filters, and a CSV
+findmyjob ats fetch -t companies.json --provider greenhouse --provider lever \
+  --filter-exclude junior --csv -o ats_jobs
+
+# Everything, no date cutoff
+findmyjob ats fetch -t companies.json --max-days 0
+```
+
+`ats fetch` supports the same filters, output flags and database flags as the
+dork search (`--filter-include`, `--filter-exclude`, `--max-days`,
+`--strict-dates`, `--min-date`, `--max-date`, `--csv`, `--no-json`,
+`--no-xlsx`, `--db`, `-q/--quiet`, `-o/--output`), plus `--retries`,
+`--timeout` and `--delay` for the API calls. Exit code `2` means every target
+failed.
+
+The `company` column is best effort: ATS URLs are reliable, title-derived
+names are not, and may be empty when no company can be identified.
+
 ## Arguments
 
 | Argument | Description |
@@ -187,6 +256,44 @@ The script can generate the following files (controlled by flags):
 3. **`.csv`** (optional, with `--csv`): Lightweight, dependency-free version
 4. **SQLite database** (optional): Stores jobs with automatic deduplication by normalized URL — ideal for periodic cron runs.
 
+## Python API
+
+Every feature is available as a library through the `findmyjob` package:
+
+```python
+from findmyjob import (
+    search_ddg, plan_queries, filter_jobs, extract_company, normalize_url,
+    save_json, save_csv, save_xlsx, save_to_db, db_stats,
+    fetch_greenhouse, fetch_targets, load_targets,
+    extract_ats_targets, discover_targets,
+)
+
+# 1. Plan and run a dork search
+plan = plan_queries("backend engineer", ["remote"], "boards", None)
+jobs = []
+for item in plan:
+    for result in search_ddg(item["query"], 10, None):
+        jobs.append({
+            "title": result["title"],
+            "link": result["link"],
+            "company": extract_company(result["link"], result["title"]),
+        })
+
+# 2. Filter and persist
+jobs = filter_jobs(jobs, max_days=7, keywords=["backend"])
+save_json("jobs.json", {"role": "backend engineer"}, jobs)
+save_to_db(jobs, "findmyjob.db")
+print(db_stats("findmyjob.db")["total"])
+
+# 3. Or fetch directly from the ATS JSON APIs
+targets = {"greenhouse": ["stripe"], "lever": ["spotify"]}
+ats_jobs, errors = fetch_targets(targets)
+```
+
+`load_targets(path)` reads the `companies.json` format, and
+`extract_ats_targets(links)` / `discover_targets(...)` implement the discovery
+half. `AtsError` is raised for a failing provider request.
+
 ## Tests
 
 ```bash
@@ -217,10 +324,22 @@ findmyjob/
 ├── src/
 │   └── findmyjob/
 │       ├── __init__.py        # Package exports and version
-│       ├── cli.py             # Core logic + CLI
+│       ├── config.py          # Boards/ATS domains and country settings
+│       ├── console.py         # ANSI colors and logging
+│       ├── dates.py           # Posting-date parsing and filtering
+│       ├── dedup.py           # URL normalization for deduplication
+│       ├── enrich.py          # Best-effort company extraction
+│       ├── search.py          # DuckDuckGo/Google backends and query planning
+│       ├── db.py              # SQLite persistence
+│       ├── output.py          # JSON/XLSX/CSV writers
+│       ├── interactive.py     # Interactive prompt flow
+│       ├── ats.py             # ATS JSON APIs (Greenhouse, Lever, Ashby, SR)
+│       ├── discover.py        # ATS company discovery from dorks
+│       ├── cli.py             # Argument parsing, subcommands and orchestration
 │       └── __main__.py        # Entry point for python -m
 ├── tests/
-│   └── test_main.py           # Automated tests
+│   ├── test_main.py           # Core tests
+│   └── test_ats.py            # ATS APIs, discovery and data-quality tests
 ├── .gitignore                 # Files ignored by git
 ├── LICENSE                    # MIT license
 ├── pyproject.toml             # Package configuration (PEP 621)
