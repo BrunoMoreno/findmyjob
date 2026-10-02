@@ -25,11 +25,13 @@ from jobsearch.cli import (
     db_stats,
     default_basename,
     domains_for,
+    extract_company,
     filter_jobs,
     main,
     normalize_url,
     parse_posted_date,
     plan_queries,
+    save_csv,
     save_json,
     save_to_db,
     save_xlsx,
@@ -307,6 +309,48 @@ class TestParsePostedDate(unittest.TestCase):
     def test_unknown(self):
         self.assertIsNone(parse_posted_date("sem data", now=self.now))
         self.assertIsNone(parse_posted_date(None, now=self.now))
+
+
+class TestExtractCompany(unittest.TestCase):
+    """Testes para extract_company()."""
+
+    def test_ats_urls(self):
+        self.assertEqual(extract_company("https://jobs.lever.co/acme-corp/1"), "Acme Corp")
+        self.assertEqual(extract_company("https://boards.greenhouse.io/stripe/jobs/1"), "Stripe")
+        self.assertEqual(extract_company("https://apply.workable.com/remotebase/j/1"), "Remotebase")
+        self.assertEqual(extract_company("https://jobs.ashbyhq.com/scalera/x"), "Scalera")
+
+    def test_subdomain_ats(self):
+        self.assertEqual(extract_company("https://acme.gupy.io/jobs/1"), "Acme")
+        self.assertEqual(
+            extract_company("https://acme.wd3.myworkdayjobs.com/en-US/careers/job/1"), "Acme")
+
+    def test_from_title(self):
+        self.assertEqual(extract_company("", "Senior Backend Engineer at Nubank"), "Nubank")
+        self.assertEqual(extract_company("", "Python Developer - Acme Corp"), "Acme Corp")
+
+    def test_unknown(self):
+        self.assertEqual(extract_company("https://www.linkedin.com/jobs/view/123", "Any"), "")
+
+
+class TestSaveCsv(unittest.TestCase):
+    """Testes para save_csv()."""
+
+    def test_writes_expected_columns(self):
+        tmp = tempfile.mkdtemp()
+        try:
+            path = os.path.join(tmp, "out.csv")
+            jobs = [{"title": "Dev", "company": "Acme", "link": "https://x/1",
+                     "domain": "x.com", "location": "remote", "query": "q",
+                     "posted_at": "2026-10-01", "description": "desc"}]
+            self.assertTrue(save_csv(path, jobs))
+            content = Path(path).read_text(encoding="utf-8-sig")
+            header = content.splitlines()[0]
+            self.assertIn("company", header)
+            self.assertIn("Acme", content)
+        finally:
+            import shutil
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 class TestNormalizeUrl(unittest.TestCase):

@@ -9,7 +9,8 @@ Buscador de vagas de emprego que utiliza "dorks" (consultas avançadas de busca)
 - **Dois backends de busca**: DuckDuckGo (padrão) ou Google Custom Search API
 - **Filtros por palavras-chave**: Incluir ou excluir termos nos resultados
 - **Filtro por data**: Idade máxima, data mínima/máxima e modo estrito
-- **Saída em JSON e XLSX**: Planilha formatada com hyperlinks e filtros
+- **Enriquecimento**: empresa extraída do link/título e descrição a partir do snippet
+- **Saída em JSON, XLSX e CSV**: Planilha formatada com hyperlinks e filtros
 - **Banco SQLite**: Deduplicação por URL normalizada, ideal para cronjobs
 - **Utilitários de banco**: Subcomandos `db stats`, `db export` e `db purge`
 - **Logging e exit codes**: `--quiet`, `--log-file` e código de saída para cronjobs
@@ -72,6 +73,9 @@ jobsearch "python developer" -c br --db ~/jobsearch.db
 
 # Salvar apenas no banco, sem arquivos
 jobsearch "golang" --db jobsearch.db --no-json --no-xlsx
+
+# Também gerar CSV
+jobsearch "golang" --csv
 
 # Somente vagas publicadas nos últimos 3 dias (descarta as sem data)
 jobsearch "backend engineer" -c br --max-days 3 --strict-dates
@@ -155,6 +159,7 @@ jobsearch "backend engineer" -b google
 | `--min-date` | Data mínima de publicação (YYYY-MM-DD) |
 | `--max-date` | Data máxima de publicação (YYYY-MM-DD) |
 | `--db` | Salvar resultados em banco SQLite (ex.: jobsearch.db) |
+| `--csv` | Também salvar arquivo CSV |
 | `--no-json` | Não salvar arquivo JSON |
 | `--no-xlsx` | Não salvar arquivo XLSX |
 | `-q, --quiet` | Suprime saída de progresso |
@@ -167,9 +172,10 @@ O script pode gerar os seguintes arquivos (controláveis por flags):
 
 1. **`.json`**: Dados brutos com metadados da busca
 2. **`.xlsx`**: Planilha formatada com:
-   - Aba "Vagas": Lista de vagas com hyperlinks
+   - Aba "Vagas": Lista de vagas com hyperlinks, empresa e descrição
    - Aba "Busca": Metadados da pesquisa
-3. **Banco SQLite** (opcional): Salva no banco com deduplicação automática por URL normalizada — ideal para execução periódica via cron.
+3. **`.csv`** (opcional, com `--csv`): Versão leve sem dependências
+4. **Banco SQLite** (opcional): Salva no banco com deduplicação automática por URL normalizada — ideal para execução periódica via cron.
 
 ## Testes
 
@@ -206,6 +212,7 @@ jobsearch/
 ├── env/                       # Virtual environment (opcional)
 ├── jobsearch.db               # Banco SQLite (gerado com --db)
 ├── vagas_*.json               # Resultados em JSON
+├── vagas_*.csv                # Resultados em CSV (com --csv)
 └── vagas_*.xlsx               # Resultados em Excel
 ```
 
