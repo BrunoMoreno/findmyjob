@@ -1,13 +1,13 @@
 """
-Busca de vagas via dorks (site:dominio "cargo" "local").
+Search for jobs via dorks (site:domain "role" "location").
 
-Modo interativo (pergunta tudo):
+Interactive mode (asks everything):
     findmyjob
 
-Modo direto:
-    findmyjob "backend engineer" -l remote -l latam            # geral
-    findmyjob "backend engineer" -c br                         # só Brasil
-    findmyjob "backend engineer" -c br -l remote --group ats   # Brasil + remoto
+Direct mode:
+    findmyjob "backend engineer" -l remote -l latam            # general
+    findmyjob "backend engineer" -c br                         # Brazil only
+    findmyjob "backend engineer" -c br -l remote --group ats   # Brazil + remote
     findmyjob --list-countries
 """
 from __future__ import annotations
@@ -25,14 +25,14 @@ from pathlib import Path
 
 import requests
 
-# ------------------------------------------------------------------ cores --
-# ANSI puro, sem dependência. Desliga sozinho quando a saída não é um terminal
-# (ex.: redirecionando para arquivo), com NO_COLOR definido ou com --no-color.
+# ------------------------------------------------------------------ colors --
+# Raw ANSI, no dependencies. Turns itself off when stdout is not a terminal
+# (e.g. redirected to a file), when NO_COLOR is set, or with --no-color.
 _CODES = {"bold": "1", "dim": "2", "underline": "4", "red": "31",
           "green": "32", "yellow": "33", "blue": "34", "magenta": "35", "cyan": "36"}
 USE_COLOR = sys.stdout.isatty() and "NO_COLOR" not in os.environ
 if os.name == "nt":
-    os.system("")  # habilita ANSI no terminal do Windows
+    os.system("")  # enable ANSI on Windows terminals
 
 
 def paint(text: str, *styles: str) -> str:
@@ -49,7 +49,7 @@ QUIET = False
 
 def setup_logging(log_file: str | None = None, quiet: bool = False,
                   verbose: bool = False) -> None:
-    """Configura logging para stdout/stderr e, opcionalmente, arquivo."""
+    """Configure logging to stdout/stderr and, optionally, to a file."""
     global QUIET
     QUIET = quiet
     level = logging.DEBUG if verbose else logging.INFO
@@ -73,7 +73,7 @@ def setup_logging(log_file: str | None = None, quiet: bool = False,
     log.propagate = False
 
 
-# ------------------------------------------------------------------- datas --
+# ------------------------------------------------------------------- dates --
 
 _RELATIVE_PATTERNS = [
     (re.compile(r"\b(\d+)\s*(?:minute|min)s?\s+ago\b", re.I), "minutes"),
@@ -86,7 +86,7 @@ _RELATIVE_PATTERNS = [
     (re.compile(r"\b(\d+)\s*dias?\s+atr[áa]s\b", re.I), "days"),
     (re.compile(r"\b(\d+)\s*semanas?\s+atr[áa]s\b", re.I), "weeks"),
     (re.compile(r"\b(\d+)\s*meses?\s+atr[áa]s\b", re.I), "months"),
-    # "há 3 dias", "ha 2 horas"
+    # Portuguese: "há 3 dias", "ha 2 horas"
     (re.compile(r"\bh[áa]\s+(\d+)\s*(?:minuto|min)s?\b", re.I), "minutes"),
     (re.compile(r"\bh[áa]\s+(\d+)\s*horas?\b", re.I), "hours"),
     (re.compile(r"\bh[áa]\s+(\d+)\s*dias?\b", re.I), "days"),
@@ -97,9 +97,9 @@ _RELATIVE_PATTERNS = [
 
 def parse_posted_date(value, now: datetime | None = None) -> datetime | None:
     """
-    Extrai uma data de publicação a partir de formatos comuns.
+    Extract a posting date from common formats.
 
-    Aceita datetime, número (dias atrás), ISO ("2026-09-28"), texto relativo
+    Accepts datetime, number (days ago), ISO ("2026-09-28"), relative text
     ("2 days ago", "há 3 dias", "today", "yesterday").
     """
     if value is None:
@@ -109,7 +109,7 @@ def parse_posted_date(value, now: datetime | None = None) -> datetime | None:
     if isinstance(value, datetime):
         return value
     if isinstance(value, (int, float)):
-        # convenção: número = dias atrás
+        # convention: number = days ago
         return now - timedelta(days=float(value))
 
     text = str(value).strip()
@@ -149,9 +149,9 @@ def parse_posted_date(value, now: datetime | None = None) -> datetime | None:
     return None
 
 
-# ----------------------------------------------------------- enriquecimento --
+# ------------------------------------------------------------- enrichment --
 
-# Padrões que expõem o nome da empresa em URLs de ATS/portais.
+# Patterns that expose the company name in ATS/job board URLs.
 _COMPANY_URL_PATTERNS = [
     re.compile(r"jobs\.lever\.co/([^/?#]+)", re.I),
     re.compile(r"(?:boards|job-boards)\.greenhouse\.io/([^/?#]+)", re.I),
@@ -162,7 +162,7 @@ _COMPANY_URL_PATTERNS = [
     re.compile(r"glassdoor\.[a-z.]+/(?:Overview|Jobs)/[^/]*?EI_IE\d+\.\d+,\d+_([^/?#]+)", re.I),
 ]
 
-# Títulos costumam vir como "Vaga na Empresa", "Vaga - Empresa", "Vaga | Empresa"
+# Titles often look like "Role at Company", "Role - Company", "Role | Company"
 _TITLE_COMPANY_PATTERNS = [
     re.compile(r"\s+(?:at|@)\s+([A-Z][\w&.\- ]{1,40})$"),
     re.compile(r"\s+[-–|]\s+([A-Z][\w&.\- ]{1,40})$"),
@@ -175,7 +175,7 @@ _SUBDOMAIN_ATS = [
 
 
 def _pretty_company(token: str) -> str:
-    """Converte slug/domínio em nome legível: 'acme-corp' -> 'Acme Corp'."""
+    """Convert a slug/domain into a readable name: 'acme-corp' -> 'Acme Corp'."""
     token = token.strip()
     token = re.sub(r"\.(com|io|co|jobs|net|org).*$", "", token, flags=re.I)
     token = re.sub(r"[-_+]+", " ", token)
@@ -190,9 +190,9 @@ def _pretty_company(token: str) -> str:
 
 def extract_company(link: str = "", title: str = "") -> str:
     """
-    Extrai o nome da empresa a partir do link (ATS/portais) ou do título.
+    Extract the company name from the link (ATS/job boards) or the title.
 
-    Retorna string vazia quando não for possível identificar.
+    Returns an empty string when it cannot be identified.
     """
     from urllib.parse import urlsplit
 
@@ -219,10 +219,10 @@ def extract_company(link: str = "", title: str = "") -> str:
     return ""
 
 
-# Portais genéricos (funcionam para busca geral)
+# Generic job boards (work for general searches)
 BOARDS = ["indeed.com", "linkedin.com/jobs", "glassdoor.com"]
 
-# ATS usados pelas empresas (ouro escondido)
+# ATS used by companies (the hidden gold)
 ATS = [
     "boards.greenhouse.io",
     "jobs.lever.co",
@@ -234,9 +234,9 @@ ATS = [
 
 GROUPS = {"boards": BOARDS, "ats": ATS, "all": BOARDS + ATS}
 
-# Config por país. Edite à vontade: "names" são os termos usados na query
-# (com OR entre eles), "region" vai para o backend, "indeed"/"glassdoor" são
-# os domínios locais e "extra" são portais que só existem naquele país.
+# Per-country config. Feel free to edit: "names" are the terms used in the query
+# (joined by OR), "region" goes to the backend, "indeed"/"glassdoor" are the
+# local domains and "extra" are job boards that exist only in that country.
 COUNTRIES = {
     "br": {"names": ["Brazil", "Brasil"], "region": "br-pt", "gl": "br",
            "indeed": "br.indeed.com", "glassdoor": "glassdoor.com.br",
@@ -289,7 +289,7 @@ def domains_for(group: str, country: dict | None) -> list[str]:
 
 def plan_queries(role: str, locals_: list[str], group: str,
                  country: dict | None) -> list[dict]:
-    """Retorna [{domain, location, query}]."""
+    """Return [{domain, location, query}]."""
     plan = []
     for d in domains_for(group, country):
         if country:
@@ -308,17 +308,17 @@ def plan_queries(role: str, locals_: list[str], group: str,
 # ---------------------------------------------------------------- backends --
 
 class SearchError(Exception):
-    """Erro durante a busca."""
+    """Error during the search."""
     pass
 
 
 def search_ddg(query: str, max_results: int, country: dict | None,
                retries: int = 3, backoff: float = 2.0) -> list[dict]:
-    """Busca no DuckDuckGo com retry automático."""
+    """Search DuckDuckGo with automatic retry."""
     try:
         from ddgs import DDGS
     except ImportError as e:
-        raise SearchError("ddgs não instalado. Execute: pip install ddgs") from e
+        raise SearchError("ddgs is not installed. Run: pip install ddgs") from e
 
     kwargs = {"max_results": max_results}
     if country:
@@ -335,20 +335,20 @@ def search_ddg(query: str, max_results: int, country: dict | None,
             last_error = e
             if attempt < retries - 1:
                 wait = backoff * (2 ** attempt)
-                print(paint(f"   [retry {attempt + 1}/{retries}] erro: {e}. "
-                            f"Tentando novamente em {wait:.1f}s...", "yellow"))
+                print(paint(f"   [retry {attempt + 1}/{retries}] error: {e}. "
+                            f"Retrying in {wait:.1f}s...", "yellow"))
                 time.sleep(wait)
 
-    raise SearchError(f"Falha após {retries} tentativas: {last_error}")
+    raise SearchError(f"Failed after {retries} attempts: {last_error}")
 
 
 def search_google(query: str, max_results: int, country: dict | None,
                   retries: int = 3, backoff: float = 2.0) -> list[dict]:
-    """Busca no Google Custom Search com retry automático."""
+    """Search Google Custom Search with automatic retry."""
     key = os.environ.get("GOOGLE_API_KEY")
     cx = os.environ.get("GOOGLE_CX")
     if not key or not cx:
-        raise SearchError("GOOGLE_API_KEY e GOOGLE_CX devem ser definidos para usar o backend google")
+        raise SearchError("GOOGLE_API_KEY and GOOGLE_CX must be set to use the google backend")
 
     params = {"key": key, "cx": cx, "q": query, "num": min(max_results, 10)}
     if country:
@@ -368,15 +368,15 @@ def search_google(query: str, max_results: int, country: dict | None,
             last_error = e
             if attempt < retries - 1:
                 wait = backoff * (2 ** attempt)
-                print(paint(f"   [retry {attempt + 1}/{retries}] erro: {e}. "
-                            f"Tentando novamente em {wait:.1f}s...", "yellow"))
+                print(paint(f"   [retry {attempt + 1}/{retries}] error: {e}. "
+                            f"Retrying in {wait:.1f}s...", "yellow"))
                 time.sleep(wait)
 
-    raise SearchError(f"Falha após {retries} tentativas: {last_error}")
+    raise SearchError(f"Failed after {retries} attempts: {last_error}")
 
 
 def _google_posted_date(item: dict) -> str | None:
-    """Tenta extrair a data de publicação do pagemap do Google CSE."""
+    """Try to extract the posting date from the Google CSE pagemap."""
     metatags = (item.get("pagemap") or {}).get("metatags") or []
     keys = ("article:published_time", "datepublished", "date", "og:updated_time",
             "article:modified_time", "pubdate")
@@ -390,7 +390,7 @@ def _google_posted_date(item: dict) -> str | None:
 BACKENDS = {"ddg": search_ddg, "google": search_google}
 
 
-# ------------------------------------------------------------------ filtros --
+# ------------------------------------------------------------------ filters --
 
 def filter_jobs(jobs: list[dict], min_date: str | None = None,
                 max_date: str | None = None,
@@ -399,19 +399,19 @@ def filter_jobs(jobs: list[dict], min_date: str | None = None,
                 max_days: int = 0,
                 keep_unknown_dates: bool = True) -> list[dict]:
     """
-    Filtra vagas por data e palavras-chave.
+    Filter jobs by date and keywords.
 
     Args:
-        jobs: Lista de vagas
-        min_date: Data mínima (formato: YYYY-MM-DD)
-        max_date: Data máxima (formato: YYYY-MM-DD)
-        keywords: Palavras-chave que devem estar no título
-        exclude_keywords: Palavras-chave que NÃO devem estar no título
-        max_days: Idade máxima em dias (0 desativa)
-        keep_unknown_dates: manter vagas sem data identificável
+        jobs: List of jobs
+        min_date: Minimum date (format: YYYY-MM-DD)
+        max_date: Maximum date (format: YYYY-MM-DD)
+        keywords: Keywords that must be in the title
+        exclude_keywords: Keywords that must NOT be in the title
+        max_days: Maximum age in days (0 disables)
+        keep_unknown_dates: keep jobs without an identifiable date
 
     Returns:
-        Lista de vagas filtradas
+        List of filtered jobs
     """
     filtered = jobs.copy()
 
@@ -442,7 +442,7 @@ def filter_jobs(jobs: list[dict], min_date: str | None = None,
             filtered = [j for j in filtered
                         if _in_date_range(j, lo, None, keep_unknown_dates)]
         except ValueError:
-            log.warning("min_date inválida (use YYYY-MM-DD): %s", min_date)
+            log.warning("invalid min_date (use YYYY-MM-DD): %s", min_date)
 
     if max_date:
         try:
@@ -450,14 +450,14 @@ def filter_jobs(jobs: list[dict], min_date: str | None = None,
             filtered = [j for j in filtered
                         if _in_date_range(j, None, hi, keep_unknown_dates)]
         except ValueError:
-            log.warning("max_date inválida (use YYYY-MM-DD): %s", max_date)
+            log.warning("invalid max_date (use YYYY-MM-DD): %s", max_date)
 
     return filtered
 
 
 def _in_date_range(job: dict, lo: datetime | None, hi: datetime | None,
                    keep_unknown: bool) -> bool:
-    """Verifica se a vaga está no intervalo [lo, hi). Sem data, segue keep_unknown."""
+    """Check whether the job is in the [lo, hi) range. Without a date, follow keep_unknown."""
     posted = _job_posted_datetime(job)
     if posted is None:
         return keep_unknown
@@ -469,7 +469,7 @@ def _in_date_range(job: dict, lo: datetime | None, hi: datetime | None,
 
 
 def _job_posted_datetime(job: dict) -> datetime | None:
-    """Retorna a data de publicação da vaga, se identificável."""
+    """Return the job posting date, if identifiable."""
     for key in ("posted_at", "date", "published", "age_days"):
         value = job.get(key)
         if value is None:
@@ -477,7 +477,7 @@ def _job_posted_datetime(job: dict) -> datetime | None:
         dt = parse_posted_date(value)
         if dt is not None:
             return dt
-    # tenta extrair de snippet/body ("2 days ago")
+    # try to extract from snippet/body ("2 days ago")
     for key in ("snippet", "body"):
         text = job.get(key)
         if text:
@@ -494,7 +494,7 @@ _TRACKING_PARAMS = re.compile(
 
 
 def normalize_url(url: str) -> str:
-    """Normaliza URL para deduplicação: remove tracking, fragmento e barra final."""
+    """Normalize a URL for deduplication: drop tracking, fragment and trailing slash."""
     if not url:
         return url
     from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
@@ -548,7 +548,7 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
         )
         """
     )
-    # Migração para bancos criados por versões anteriores.
+    # Migration for databases created by earlier versions.
     cols = {row[1] for row in cur.execute("PRAGMA table_info(jobs)")}
     for col in ("link_key", "first_seen_at", "last_seen_at"):
         if col not in cols:
@@ -561,10 +561,10 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
 
 def save_to_db(jobs: list[dict], db: str | None = None) -> int:
     """
-    Salva vagas em banco SQLite.
+    Save jobs to a SQLite database.
 
-    Deduplica pela URL normalizada (sem tracking). Retorna o número de vagas
-    novas inseridas. Vagas já existentes têm `last_seen_at` atualizado.
+    Deduplicates by normalized URL (without tracking). Returns the number of
+    new jobs inserted. Existing jobs get `last_seen_at` updated.
     """
     if not jobs:
         return 0
@@ -614,7 +614,7 @@ def save_to_db(jobs: list[dict], db: str | None = None) -> int:
                         (now, now, normalize_url(link)),
                     )
             except sqlite3.Error as e:
-                log.warning("Falha ao salvar vaga no banco: %s", e)
+                log.warning("Failed to save job to the database: %s", e)
                 continue
         conn.commit()
     finally:
@@ -624,7 +624,7 @@ def save_to_db(jobs: list[dict], db: str | None = None) -> int:
 
 
 def db_stats(db: str | None = None) -> dict:
-    """Retorna estatísticas do banco."""
+    """Return database statistics."""
     conn = _connect(db)
     try:
         _ensure_schema(conn)
@@ -653,7 +653,7 @@ def db_stats(db: str | None = None) -> dict:
 
 def db_export(db: str | None = None, fmt: str = "json", limit: int | None = None,
               since_days: int | None = None) -> str:
-    """Exporta vagas do banco como JSON ou CSV (retorna o texto)."""
+    """Export jobs from the database as JSON or CSV (returns the text)."""
     import csv
     import io
 
@@ -685,7 +685,7 @@ def db_export(db: str | None = None, fmt: str = "json", limit: int | None = None
 
 
 def db_purge(db: str | None = None, older_than_days: int | None = None) -> int:
-    """Remove vagas antigas. Sem `older_than_days`, limpa todo o banco."""
+    """Remove old jobs. Without `older_than_days`, clears the whole database."""
     conn = _connect(db)
     try:
         _ensure_schema(conn)
@@ -711,59 +711,59 @@ def ask(prompt: str, default: str = "") -> str:
 
 
 def default_basename(role: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", role.lower()).strip("-") or "vagas"
-    return f"vagas_{slug}_{datetime.now():%Y%m%d_%H%M}"
+    slug = re.sub(r"[^a-z0-9]+", "-", role.lower()).strip("-") or "jobs"
+    return f"jobs_{slug}_{datetime.now():%Y%m%d_%H%M}"
 
 
 def interactive_prompts(args: argparse.Namespace) -> None:
-    print(paint("=== Busca de vagas ===", "bold", "cyan"), "\n")
+    print(paint("=== Job search ===", "bold", "cyan"), "\n")
     while not args.role:
-        args.role = ask("Qual vaga você está buscando? (ex: backend engineer)")
+        args.role = ask("What role are you looking for? (e.g. backend engineer)")
 
-    print(paint("\nAlcance da busca:", "bold"))
-    print("  1) Geral (mundo todo)")
-    print("  2) Um país específico")
-    if ask("Opção", "1") == "2":
-        print("  Países: " + ", ".join(f"{k} ({v['names'][0]})" for k, v in COUNTRIES.items()))
-        code = ask("Código do país", "br").lower()
+    print(paint("\nSearch scope:", "bold"))
+    print("  1) General (worldwide)")
+    print("  2) A specific country")
+    if ask("Option", "1") == "2":
+        print("  Countries: " + ", ".join(f"{k} ({v['names'][0]})" for k, v in COUNTRIES.items()))
+        code = ask("Country code", "br").lower()
         if code in COUNTRIES:
             args.country = code
         else:
-            print(paint(f"  [aviso] país '{code}' desconhecido, usando busca geral.", "yellow"))
-        locs = ask("Refinar por cidade/remote (opcional, vírgula)", "")
+            print(paint(f"  [warning] unknown country '{code}', using a general search.", "yellow"))
+        locs = ask("Refine by city/remote (optional, comma-separated)", "")
     else:
         args.country = None
-        locs = ask("Local(is), separados por vírgula", "remote, latam")
+        locs = ask("Location(s), comma-separated", "remote, latam")
     args.local = [x.strip() for x in locs.split(",") if x.strip()]
 
-    print(paint("\nOnde buscar?", "bold"))
-    print("  1) Portais (Indeed, LinkedIn, Glassdoor + locais do país)")
-    print("  2) ATS das empresas (Greenhouse, Lever, Workday, ...)")
-    print("  3) Todos")
-    args.group = {"1": "boards", "2": "ats", "3": "all"}.get(ask("Opção", "3"), "all")
+    print(paint("\nWhere to search?", "bold"))
+    print("  1) Job boards (Indeed, LinkedIn, Glassdoor + local ones)")
+    print("  2) Company ATS (Greenhouse, Lever, Workday, ...)")
+    print("  3) All")
+    args.group = {"1": "boards", "2": "ats", "3": "all"}.get(ask("Option", "3"), "all")
 
-    max_raw = ask("Resultados por query", str(args.max))
+    max_raw = ask("Results per query", str(args.max))
     args.max = int(max_raw) if max_raw.isdigit() else args.max
 
-    # Filtros adicionais
-    print(paint("\nFiltros adicionais (opcional):", "bold"))
-    include = ask("Palavras-chave incluir (vírgula)", "")
+    # Additional filters
+    print(paint("\nAdditional filters (optional):", "bold"))
+    include = ask("Keywords to include (comma)", "")
     args.filter_include = [x.strip() for x in include.split(",") if x.strip()]
-    exclude = ask("Palavras-chave excluir (vírgula)", "")
+    exclude = ask("Keywords to exclude (comma)", "")
     args.filter_exclude = [x.strip() for x in exclude.split(",") if x.strip()]
 
-    max_days_raw = ask("Idade máxima da vaga em dias (0 desativa)", str(args.max_days))
+    max_days_raw = ask("Maximum job age in days (0 disables)", str(args.max_days))
     if max_days_raw.isdigit():
         args.max_days = int(max_days_raw)
 
-    args.output = ask("Nome base dos arquivos (gera .json e .xlsx)",
+    args.output = ask("Base name for the files (generates .json and .xlsx)",
                       default_basename(args.role))
 
-    print(paint("\nSalvar em banco SQLite?", "bold"))
-    db_path = ask("Caminho do banco (vazio = não)", "")
+    print(paint("\nSave to a SQLite database?", "bold"))
+    db_path = ask("Database path (empty = no)", "")
     args.db = db_path or None
 
-    args.csv = ask("Também salvar CSV? (s/N)", "n").lower() in ("s", "sim", "y", "yes")
+    args.csv = ask("Also save CSV? (y/N)", "n").lower() in ("s", "sim", "y", "yes")
     print()
 
 
@@ -781,14 +781,14 @@ def save_xlsx(path: str, meta: dict, jobs: list[dict]) -> bool:
         from openpyxl.styles import Alignment, Font, PatternFill
         from openpyxl.utils import get_column_letter
     except ImportError:
-        print(paint("[aviso] openpyxl não instalado (pip install openpyxl); .xlsx não foi gerado.", "yellow"))
+        print(paint("[warning] openpyxl is not installed (pip install openpyxl); .xlsx was not generated.", "yellow"))
         return False
 
     wb = Workbook()
     ws = wb.active
-    ws.title = "Vagas"
+    ws.title = "Jobs"
 
-    headers = ["#", "Título", "Empresa", "Link", "Domínio", "Local", "Query", "Descrição"]
+    headers = ["#", "Title", "Company", "Link", "Domain", "Location", "Query", "Description"]
     ws.append(headers)
     for cell in ws[1]:
         cell.font = Font(bold=True, color="FFFFFF")
@@ -803,7 +803,7 @@ def save_xlsx(path: str, meta: dict, jobs: list[dict]) -> bool:
         link_cell.hyperlink = j.get("link", "")
         link_cell.font = Font(color="0563C1", underline="single")
 
-    # Larguras dinâmicas com base no conteúdo (com limites razoáveis).
+    # Dynamic widths based on content (with reasonable caps).
     caps = (5, 55, 28, 60, 22, 20, 45, 70)
     for idx, cap in enumerate(caps, start=1):
         longest = len(str(headers[idx - 1]))
@@ -816,7 +816,7 @@ def save_xlsx(path: str, meta: dict, jobs: list[dict]) -> bool:
     if jobs:
         ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}{len(jobs) + 1}"
 
-    info = wb.create_sheet("Busca")
+    info = wb.create_sheet("Search")
     for k, v in meta.items():
         info.append([k, ", ".join(v) if isinstance(v, list) else v])
     info.append(["total", len(jobs)])
@@ -832,7 +832,7 @@ _CSV_FIELDS = ["title", "company", "link", "domain", "location", "query",
 
 
 def save_csv(path: str, jobs: list[dict]) -> bool:
-    """Salva as vagas em CSV (UTF-8). Retorna True em caso de sucesso."""
+    """Save jobs to CSV (UTF-8). Returns True on success."""
     import csv
 
     try:
@@ -842,7 +842,7 @@ def save_csv(path: str, jobs: list[dict]) -> bool:
             for j in jobs:
                 writer.writerow({k: j.get(k, "") or "" for k in _CSV_FIELDS})
     except OSError as e:
-        print(paint(f"[aviso] não foi possível gerar o CSV: {e}", "yellow"))
+        print(paint(f"[warning] could not generate the CSV: {e}", "yellow"))
         return False
     return True
 
@@ -850,26 +850,26 @@ def save_csv(path: str, jobs: list[dict]) -> bool:
 # ------------------------------------------------------------- db command --
 
 def db_command(argv: list[str]) -> int:
-    """Subcomandos para consultar/gerenciar o banco: stats, export, purge."""
+    """Subcommands to inspect/manage the database: stats, export, purge."""
     parser = argparse.ArgumentParser(prog="findmyjob db",
-                                     description="Utilitários do banco SQLite")
-    parser.add_argument("--db", help="caminho do banco (padrão: ./findmyjob.db)")
+                                     description="SQLite database utilities")
+    parser.add_argument("--db", help="database path (default: ./findmyjob.db)")
     sub = parser.add_subparsers(dest="action", required=True)
 
-    p_stats = sub.add_parser("stats", help="mostra estatísticas do banco")
-    p_stats.add_argument("--json", action="store_true", help="saída em JSON")
+    p_stats = sub.add_parser("stats", help="show database statistics")
+    p_stats.add_argument("--json", action="store_true", help="JSON output")
 
-    p_export = sub.add_parser("export", help="exporta as vagas")
-    p_export.add_argument("-o", "--output", help="arquivo de saída (padrão: stdout)")
+    p_export = sub.add_parser("export", help="export jobs")
+    p_export.add_argument("-o", "--output", help="output file (default: stdout)")
     p_export.add_argument("--format", choices=["json", "csv"], default="json")
-    p_export.add_argument("--limit", type=int, help="máximo de vagas")
-    p_export.add_argument("--since-days", type=int, help="somente dos últimos N dias")
+    p_export.add_argument("--limit", type=int, help="maximum number of jobs")
+    p_export.add_argument("--since-days", type=int, help="only the last N days")
 
-    p_purge = sub.add_parser("purge", help="remove vagas antigas")
-    p_purge.add_argument("--older-than", type=int, metavar="DIAS",
-                         help="remove vagas vistas há mais de N dias")
+    p_purge = sub.add_parser("purge", help="remove old jobs")
+    p_purge.add_argument("--older-than", type=int, metavar="DAYS",
+                         help="remove jobs last seen more than N days ago")
     p_purge.add_argument("-y", "--yes", action="store_true",
-                         help="não pedir confirmação")
+                         help="do not ask for confirmation")
 
     args = parser.parse_args(argv)
     db = args.db
@@ -879,16 +879,16 @@ def db_command(argv: list[str]) -> int:
         if args.json:
             print(json.dumps(stats, ensure_ascii=False, indent=2))
             return 0
-        print(paint("Banco:", "bold"), _get_db_path(db))
-        print(paint("Total de vagas:", "bold"), stats["total"])
-        print("Primeira:", stats["first_seen"] or "-")
-        print("Última:  ", stats["last_seen"] or "-")
+        print(paint("Database:", "bold"), _get_db_path(db))
+        print(paint("Total jobs:", "bold"), stats["total"])
+        print("First:", stats["first_seen"] or "-")
+        print("Last: ", stats["last_seen"] or "-")
         if stats["by_source"]:
-            print("\n" + paint("Por fonte:", "bold"))
+            print("\n" + paint("By source:", "bold"))
             for src, count in stats["by_source"]:
                 print(f"  {count:>5}  {src}")
         if stats["by_day"]:
-            print("\n" + paint("Por dia (últimos):", "bold"))
+            print("\n" + paint("By day (recent):", "bold"))
             for day, count in stats["by_day"]:
                 print(f"  {count:>5}  {day}")
         return 0
@@ -898,21 +898,21 @@ def db_command(argv: list[str]) -> int:
                             since_days=args.since_days)
         if args.output:
             Path(args.output).write_text(content, encoding="utf-8")
-            print(f"Exportado para {args.output}")
+            print(f"Exported to {args.output}")
         else:
             print(content)
         return 0
 
     if args.action == "purge":
         if not args.yes:
-            target = (f"vagas mais antigas que {args.older_than} dias"
-                      if args.older_than else "TODAS as vagas")
-            resp = input(f"Confirmar remoção de {target}? [s/N]: ").strip().lower()
+            target = (f"jobs older than {args.older_than} days"
+                      if args.older_than else "ALL jobs")
+            resp = input(f"Confirm removal of {target}? [y/N]: ").strip().lower()
             if resp not in ("s", "y", "sim", "yes"):
-                print("Cancelado.")
+                print("Cancelled.")
                 return 1
         deleted = db_purge(db, older_than_days=args.older_than)
-        print(f"{deleted} vaga(s) removida(s).")
+        print(f"{deleted} job(s) removed.")
         return 0
 
     return 1  # pragma: no cover
@@ -921,46 +921,46 @@ def db_command(argv: list[str]) -> int:
 # -------------------------------------------------------------------- main --
 
 def _build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="Busca de vagas com dorks de busca")
-    p.add_argument("role", nargs="?", help='cargo, ex: "backend engineer" (omita para modo interativo)')
+    p = argparse.ArgumentParser(description="Search for jobs with search dorks")
+    p.add_argument("role", nargs="?", help='role, e.g. "backend engineer" (omit for interactive mode)')
     p.add_argument("-c", "--country", choices=COUNTRIES,
-                   help="limita a busca a um país (omita para busca geral)")
+                   help="restrict the search to one country (omit for a general search)")
     p.add_argument("-l", "--local", action="append", default=[],
-                   help="local/termo extra (repita para vários). Com -c refina o país (cidade, remote)")
+                   help="extra location/term (repeat for several). With -c it refines the country (city, remote)")
     p.add_argument("-g", "--group", choices=GROUPS, default="all")
     p.add_argument("-b", "--backend", choices=BACKENDS, default="ddg")
-    p.add_argument("-m", "--max", type=int, default=8, help="resultados por query")
-    p.add_argument("-o", "--output", help="nome base dos arquivos de saída, gera .json e .xlsx")
-    p.add_argument("-i", "--interactive", action="store_true", help="força o modo interativo")
-    p.add_argument("--delay", type=float, default=2.0, help="segundos entre queries")
-    p.add_argument("--retries", type=int, default=3, help="número de tentativas em caso de erro")
-    p.add_argument("--show-queries", action="store_true", help="só imprime as queries")
-    p.add_argument("--no-color", action="store_true", help="desativa as cores")
-    p.add_argument("--list-countries", action="store_true", help="lista os países disponíveis")
+    p.add_argument("-m", "--max", type=int, default=8, help="results per query")
+    p.add_argument("-o", "--output", help="base name for output files, generates .json and .xlsx")
+    p.add_argument("-i", "--interactive", action="store_true", help="force interactive mode")
+    p.add_argument("--delay", type=float, default=2.0, help="seconds between queries")
+    p.add_argument("--retries", type=int, default=3, help="number of attempts on error")
+    p.add_argument("--show-queries", action="store_true", help="only print the queries")
+    p.add_argument("--no-color", action="store_true", help="disable colors")
+    p.add_argument("--list-countries", action="store_true", help="list the available countries")
     p.add_argument("--filter-include", nargs="+", default=[],
-                   help="palavras-chave que devem estar no título")
+                   help="keywords that must be in the title")
     p.add_argument("--filter-exclude", nargs="+", default=[],
-                   help="palavras-chave que NÃO devem estar no título")
+                   help="keywords that must NOT be in the title")
     p.add_argument("--max-days", type=int, default=3,
-                   help="idade máxima da vaga em dias (0 desativa; padrão: 3)")
+                   help="maximum job age in days (0 disables; default: 3)")
     p.add_argument("--strict-dates", action="store_true",
-                   help="descarta vagas sem data identificável")
-    p.add_argument("--min-date", help="data mínima de publicação (YYYY-MM-DD)")
-    p.add_argument("--max-date", help="data máxima de publicação (YYYY-MM-DD)")
-    p.add_argument("--db", help="salvar resultados em banco SQLite (ex.: findmyjob.db)")
-    p.add_argument("--csv", action="store_true", help="também salvar arquivo CSV")
-    p.add_argument("--no-json", action="store_true", help="não salvar arquivo JSON")
-    p.add_argument("--no-xlsx", action="store_true", help="não salvar arquivo XLSX")
-    p.add_argument("-q", "--quiet", action="store_true", help="suprime saída de progresso")
-    p.add_argument("-v", "--verbose", action="store_true", help="log detalhado")
-    p.add_argument("--log-file", help="arquivo de log (append)")
+                   help="drop jobs without an identifiable date")
+    p.add_argument("--min-date", help="minimum posting date (YYYY-MM-DD)")
+    p.add_argument("--max-date", help="maximum posting date (YYYY-MM-DD)")
+    p.add_argument("--db", help="save results to a SQLite database (e.g. findmyjob.db)")
+    p.add_argument("--csv", action="store_true", help="also save a CSV file")
+    p.add_argument("--no-json", action="store_true", help="do not save a JSON file")
+    p.add_argument("--no-xlsx", action="store_true", help="do not save an XLSX file")
+    p.add_argument("-q", "--quiet", action="store_true", help="suppress progress output")
+    p.add_argument("-v", "--verbose", action="store_true", help="detailed logging")
+    p.add_argument("--log-file", help="log file (append)")
     return p
 
 
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
 
-    # Subcomandos de banco: findmyjob db <stats|export|purge>
+    # Database subcommands: findmyjob db <stats|export|purge>
     if argv and argv[0] == "db":
         return db_command(argv[1:])
 
@@ -989,8 +989,8 @@ def main(argv=None) -> int:
             print(item["query"])
         return 0
 
-    scope = country["names"][0] if country else "geral"
-    log.info("Escopo: %s | %d queries", scope, len(plan))
+    scope = country["names"][0] if country else "general"
+    log.info("Scope: %s | %d queries", scope, len(plan))
 
     search = BACKENDS[args.backend]
     seen: set[str] = set()
@@ -1014,7 +1014,7 @@ def main(argv=None) -> int:
 
             new = [r for r in results if r["link"] and r["link"] not in seen]
             if not new and not QUIET:
-                print(paint("   (nenhum resultado novo)", "dim"))
+                print(paint("   (no new results)", "dim"))
             for r in new:
                 seen.add(r["link"])
                 snippet = r.get("snippet", "") or ""
@@ -1032,9 +1032,9 @@ def main(argv=None) -> int:
                     print("     " + paint(r["link"], "blue", "underline"))
             time.sleep(args.delay)
     except KeyboardInterrupt:
-        log.warning("interrompido; salvando o que foi encontrado até aqui...")
+        log.warning("interrupted; saving what was found so far...")
 
-    # Aplicar filtros (sempre que qualquer critério estiver ativo)
+    # Apply filters (whenever any criterion is active)
     has_filter = (args.filter_include or args.filter_exclude
                   or args.max_days > 0 or args.min_date or args.max_date)
     if has_filter:
@@ -1048,7 +1048,7 @@ def main(argv=None) -> int:
             max_date=args.max_date,
             keep_unknown_dates=not args.strict_dates,
         )
-        log.info("Filtros aplicados: %d -> %d vagas", before, len(jobs))
+        log.info("Filters applied: %d -> %d jobs", before, len(jobs))
 
     base = args.output or default_basename(args.role)
     base = re.sub(r"\.(json|xlsx?)$", "", base, flags=re.IGNORECASE)
@@ -1076,16 +1076,16 @@ def main(argv=None) -> int:
     if args.db:
         try:
             inserted = save_to_db(jobs, args.db)
-            log.info("%d novas vagas salvas no banco %s", inserted, _get_db_path(args.db))
+            log.info("%d new jobs saved to the database %s", inserted, _get_db_path(args.db))
         except Exception as e:
-            log.error("falha ao salvar no banco: %s", e)
+            log.error("failed to save to the database: %s", e)
             errors += 1
 
-    log.info("%d vagas únicas encontradas.", len(jobs))
+    log.info("%d unique jobs found.", len(jobs))
     if saved_list:
-        log.info("Arquivos salvos: %s", ", ".join(saved_list))
+        log.info("Files saved: %s", ", ".join(saved_list))
 
-    # Exit code: 2 se todas as queries falharam (útil em cronjobs)
+    # Exit code: 2 if all queries failed (useful for cronjobs)
     if plan and errors >= len(plan):
         return 2
     return 0

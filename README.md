@@ -1,249 +1,261 @@
-# FindMyJob - Buscador de Vagas
+<p align="center">
+  <img src="https://raw.githubusercontent.com/BrunoMoreno/findmyjob/main/assets/logo.png" alt="FindMyJob logo" width="320">
+</p>
 
-Buscador de vagas de emprego que utiliza "dorks" (consultas avançadas de busca) para encontrar vagas em portais de emprego e sistemas de acompanhamento de candidatos (ATS).
+# FindMyJob - Job Search Tool
 
-## Funcionalidades
+A job search tool that uses "dorks" (advanced search queries) to find job openings on job boards and Applicant Tracking Systems (ATS).
 
-- **Múltiplas fontes de busca**: Indeed, LinkedIn, Glassdoor + ATS (Greenhouse, Lever, Workday, SmartRecruiters, Ashby, Workable)
-- **Suporte a 11 países**: Brasil, Portugal, EUA, Reino Unido, Canadá, Alemanha, Espanha, México, Argentina, Colômbia e Chile
-- **Dois backends de busca**: DuckDuckGo (padrão) ou Google Custom Search API
-- **Filtros por palavras-chave**: Incluir ou excluir termos nos resultados
-- **Filtro por data**: Idade máxima, data mínima/máxima e modo estrito
-- **Enriquecimento**: empresa extraída do link/título e descrição a partir do snippet
-- **Saída em JSON, XLSX e CSV**: Planilha formatada com hyperlinks e filtros
-- **Banco SQLite**: Deduplicação por URL normalizada, ideal para cronjobs
-- **Utilitários de banco**: Subcomandos `db stats`, `db export` e `db purge`
-- **Logging e exit codes**: `--quiet`, `--log-file` e código de saída para cronjobs
-- **Retry automático**: Tentativas configuráveis em caso de falha de rede
-- **Modo interativo ou CLI**: Interface amigável ou argumentos de linha de comando
+## Features
 
-## Instalação
+- **Multiple search sources**: Indeed, LinkedIn, Glassdoor + ATS (Greenhouse, Lever, Workday, SmartRecruiters, Ashby, Workable)
+- **11 countries supported**: Brazil, Portugal, USA, UK, Canada, Germany, Spain, Mexico, Argentina, Colombia and Chile
+- **Two search backends**: DuckDuckGo (default) or Google Custom Search API
+- **Keyword filters**: Include or exclude terms from results
+- **Date filtering**: Maximum age, minimum/maximum date and strict mode
+- **Enrichment**: company extracted from the link/title and description from the snippet
+- **JSON, XLSX and CSV output**: Formatted spreadsheet with hyperlinks and filters
+- **SQLite database**: Deduplication by normalized URL, ideal for cronjobs
+- **Database utilities**: `db stats`, `db export` and `db purge` subcommands
+- **Logging and exit codes**: `--quiet`, `--log-file` and exit code for cronjobs
+- **Automatic retry**: Configurable attempts on network failure
+- **Interactive mode or CLI**: Friendly interface or command-line arguments
 
-### Instalação como pacote (recomendado)
+## Installation
+
+### Install from PyPI (recommended)
 
 ```bash
-# Instalar a partir do diretório do projeto
+pip install findmyjob
+```
+
+### Install from source
+
+```bash
+# Install from the project directory
 pip install .
 
-# Ou em modo desenvolvimento (alterações refletem imediatamente)
+# Or in development mode (changes take effect immediately)
 pip install -e .
 ```
 
-### Instalação manual (desenvolvimento)
+### Manual setup (development)
 
 ```bash
-# Crie um ambiente virtual
+# Create a virtual environment
 python -m venv env
 source env/bin/activate  # Linux/Mac
 # env\Scripts\activate   # Windows
 
-# Instale as dependências
+# Install the dependencies
 pip install -r requirements.txt
 ```
 
-## Uso
+## Usage
 
-Após instalar o pacote (`pip install .`), você pode usar o comando `findmyjob` diretamente.
+After installing the package, you can use the `findmyjob` command directly.
 
-### Modo Interativo
+### Interactive Mode
 
 ```bash
 findmyjob
 ```
 
-O script irá perguntar sobre o cargo, país, local e fontes de busca.
+The script will ask about the role, country, location and search sources.
 
-### Modo CLI (Linha de Comando)
+### CLI Mode (Command Line)
 
 ```bash
-# Busca geral
+# General search
 findmyjob "backend engineer" -l remote -l latam
 
-# Busca apenas no Brasil
+# Brazil only
 findmyjob "backend engineer" -c br
 
-# Brasil + remoto + apenas ATS
+# Brazil + remote + ATS only
 findmyjob "backend engineer" -c br -l remote --group ats
 
-# Com filtros de palavras-chave
+# With keyword filters
 findmyjob "backend engineer" --filter-include senior --filter-exclude junior
 
-# Salvar em banco SQLite (ideal para cronjobs)
+# Save to a SQLite database (ideal for cronjobs)
 findmyjob "python developer" -c br --db ~/findmyjob.db
 
-# Salvar apenas no banco, sem arquivos
+# Save only to the database, no files
 findmyjob "golang" --db findmyjob.db --no-json --no-xlsx
 
-# Também gerar CSV
+# Also generate a CSV file
 findmyjob "golang" --csv
 
-# Somente vagas publicadas nos últimos 3 dias (descarta as sem data)
+# Only jobs posted in the last 3 days (drops those without a date)
 findmyjob "backend engineer" -c br --max-days 3 --strict-dates
 
-# Filtrar por intervalo de datas
+# Filter by date range
 findmyjob "backend engineer" --min-date 2026-09-01 --max-date 2026-10-01
 
-# Modo silencioso + log em arquivo (bom para cron)
+# Quiet mode + log to file (good for cron)
 findmyjob "backend engineer" --db ~/findmyjob.db --quiet --log-file ~/findmyjob.log
 
-# Listar países disponíveis
+# List available countries
 findmyjob --list-countries
 
-# Apenas mostrar as queries (sem executar busca)
+# Only show the queries (without running the search)
 findmyjob "backend engineer" --show-queries
 ```
 
-Também é possível usar como módulo Python:
+It can also be used as a Python module:
 
 ```bash
 python -m findmyjob "backend engineer" -c br
 ```
 
-### Utilitários do banco
+### Database Utilities
 
 ```bash
-# Estatísticas do banco
+# Database statistics
 findmyjob db --db ~/findmyjob.db stats
 
-# Exportar tudo para JSON ou CSV (stdout ou arquivo)
-findmyjob db --db ~/findmyjob.db export --format csv -o vagas.csv
+# Export everything to JSON or CSV (stdout or file)
+findmyjob db --db ~/findmyjob.db export --format csv -o jobs.csv
 
-# Exportar apenas as vagas dos últimos 7 dias
+# Export only jobs from the last 7 days
 findmyjob db --db ~/findmyjob.db export --since-days 7
 
-# Remover vagas vistas há mais de 30 dias (pede confirmação)
+# Remove jobs last seen more than 30 days ago (asks for confirmation)
 findmyjob db --db ~/findmyjob.db purge --older-than 30
 ```
 
-### Uso em cronjob
+### Cronjob Usage
 
-O comando retorna código de saída `2` quando **todas** as queries falham e `1`
-em erros fatais — útil para monitoramento. Exemplo de entrada no `crontab`:
+The command returns exit code `2` when **all** queries fail and `1`
+on fatal errors — useful for monitoring. Example `crontab` entry:
 
 ```cron
-# Todo dia às 8h: busca vagas recentes e grava no banco
+# Every day at 8am: search recent jobs and store them in the database
 0 8 * * * /usr/local/bin/findmyjob "backend engineer" -c br -l remote \
   --max-days 3 --strict-dates --db "$HOME/findmyjob.db" \
   --no-json --no-xlsx --quiet --log-file "$HOME/findmyjob.log"
 ```
 
-### Usando Google Custom Search (Opcional)
+### Using Google Custom Search (Optional)
 
 ```bash
-export GOOGLE_API_KEY="sua_chave"
-export GOOGLE_CX="seu_cx"
+export GOOGLE_API_KEY="your_key"
+export GOOGLE_CX="your_cx"
 findmyjob "backend engineer" -b google
 ```
 
-## Argumentos
+## Arguments
 
-| Argumento | Descrição |
-|-----------|-----------|
-| `role` | Cargo a buscar (ex: "backend engineer") |
-| `-c, --country` | Limitar a um país (br, pt, us, uk, ca, de, es, mx, ar, co, cl) |
-| `-l, --local` | Local/termo extra (repetível) |
-| `-g, --group` | Grupo de fontes: boards, ats, all |
-| `-b, --backend` | Backend de busca: ddg, google |
-| `-m, --max` | Resultados por query (padrão: 8) |
-| `-o, --output` | Nome base dos arquivos de saída |
-| `-i, --interactive` | Forçar modo interativo |
-| `--delay` | Segundos entre queries (padrão: 2.0) |
-| `--retries` | Tentativas em caso de erro (padrão: 3) |
-| `--show-queries` | Apenas imprimir as queries |
-| `--no-color` | Desativar cores |
-| `--list-countries` | Listar países disponíveis |
-| `--filter-include` | Palavras-chave que devem estar no título |
-| `--filter-exclude` | Palavras-chave que NÃO devem estar no título |
-| `--max-days` | Idade máxima da vaga em dias (0 desativa; padrão: 3) |
-| `--strict-dates` | Descarta vagas sem data identificável |
-| `--min-date` | Data mínima de publicação (YYYY-MM-DD) |
-| `--max-date` | Data máxima de publicação (YYYY-MM-DD) |
-| `--db` | Salvar resultados em banco SQLite (ex.: findmyjob.db) |
-| `--csv` | Também salvar arquivo CSV |
-| `--no-json` | Não salvar arquivo JSON |
-| `--no-xlsx` | Não salvar arquivo XLSX |
-| `-q, --quiet` | Suprime saída de progresso |
-| `-v, --verbose` | Log detalhado |
-| `--log-file` | Arquivo de log (append) |
+| Argument | Description |
+|----------|-------------|
+| `role` | Role to search for (e.g. "backend engineer") |
+| `-c, --country` | Restrict to one country (br, pt, us, uk, ca, de, es, mx, ar, co, cl) |
+| `-l, --local` | Extra location/term (repeatable) |
+| `-g, --group` | Source group: boards, ats, all |
+| `-b, --backend` | Search backend: ddg, google |
+| `-m, --max` | Results per query (default: 8) |
+| `-o, --output` | Base name for output files |
+| `-i, --interactive` | Force interactive mode |
+| `--delay` | Seconds between queries (default: 2.0) |
+| `--retries` | Attempts on error (default: 3) |
+| `--show-queries` | Only print the queries |
+| `--no-color` | Disable colors |
+| `--list-countries` | List available countries |
+| `--filter-include` | Keywords that must be in the title |
+| `--filter-exclude` | Keywords that must NOT be in the title |
+| `--max-days` | Maximum job age in days (0 disables; default: 3) |
+| `--strict-dates` | Drop jobs without an identifiable date |
+| `--min-date` | Minimum posting date (YYYY-MM-DD) |
+| `--max-date` | Maximum posting date (YYYY-MM-DD) |
+| `--db` | Save results to a SQLite database (e.g. findmyjob.db) |
+| `--csv` | Also save a CSV file |
+| `--no-json` | Do not save a JSON file |
+| `--no-xlsx` | Do not save an XLSX file |
+| `-q, --quiet` | Suppress progress output |
+| `-v, --verbose` | Detailed logging |
+| `--log-file` | Log file (append) |
 
-## Saída
+## Output
 
-O script pode gerar os seguintes arquivos (controláveis por flags):
+The script can generate the following files (controlled by flags):
 
-1. **`.json`**: Dados brutos com metadados da busca
-2. **`.xlsx`**: Planilha formatada com:
-   - Aba "Vagas": Lista de vagas com hyperlinks, empresa e descrição
-   - Aba "Busca": Metadados da pesquisa
-3. **`.csv`** (opcional, com `--csv`): Versão leve sem dependências
-4. **Banco SQLite** (opcional): Salva no banco com deduplicação automática por URL normalizada — ideal para execução periódica via cron.
+1. **`.json`**: Raw data with search metadata
+2. **`.xlsx`**: Formatted spreadsheet with:
+   - "Jobs" sheet: List of jobs with hyperlinks, company and description
+   - "Search" sheet: Search metadata
+3. **`.csv`** (optional, with `--csv`): Lightweight, dependency-free version
+4. **SQLite database** (optional): Stores jobs with automatic deduplication by normalized URL — ideal for periodic cron runs.
 
-## Testes
+## Tests
 
 ```bash
-# Instale as dependências de desenvolvimento
+# Install development dependencies
 pip install -e ".[dev]"
 
-# Rode os testes
+# Run the tests
 pytest -v
 
-# Verificação de lint
+# Lint check
 ruff check .
 ```
 
-## Estrutura do Projeto
+## Project Structure
 
 ```
 findmyjob/
 ├── .github/
 │   └── workflows/
-│       ├── tests.yml          # CI: testes e lint em push/PR
-│       └── publish-pypi.yml   # CI: publica no PyPI ao criar release
+│       ├── tests.yml          # CI: tests and lint on push/PR
+│       └── publish-pypi.yml   # CI: publish to PyPI on release
+├── assets/
+│   └── logo.png               # Project logo
 ├── src/
 │   └── findmyjob/
-│       ├── __init__.py        # Exports do pacote
-│       ├── cli.py             # Lógica principal + CLI
-│       └── __main__.py        # Entry point para python -m
+│       ├── __init__.py        # Package exports
+│       ├── cli.py             # Core logic + CLI
+│       └── __main__.py        # Entry point for python -m
 ├── tests/
-│   └── test_main.py           # Testes automatizados
-├── pyproject.toml             # Configuração do pacote (PEP 621)
-├── requirements.txt           # Dependências
-├── README.md                  # Documentação
-├── .gitignore                 # Arquivos ignorados pelo git
-├── env/                       # Virtual environment (opcional)
-├── findmyjob.db                 # Banco SQLite (gerado com --db)
-├── vagas_*.json               # Resultados em JSON
-├── vagas_*.csv                # Resultados em CSV (com --csv)
-└── vagas_*.xlsx               # Resultados em Excel
+│   └── test_main.py           # Automated tests
+├── pyproject.toml             # Package configuration (PEP 621)
+├── requirements.txt           # Dependencies
+├── README.md                  # Documentation
+├── .gitignore                 # Files ignored by git
+├── env/                       # Virtual environment (optional)
+├── findmyjob.db               # SQLite database (generated with --db)
+├── jobs_*.json                # JSON results
+├── jobs_*.csv                 # CSV results (with --csv)
+└── jobs_*.xlsx                # Excel results
 ```
 
-## Exemplos de Uso
+## Usage Examples
 
-### Buscar vagas de Python no Brasil
+### Search for Python jobs in Brazil
 
 ```bash
 findmyjob "python developer" -c br -l remote
 ```
 
-### Buscar vagas de Go com filtro
+### Search for Go jobs with a filter
 
 ```bash
 findmyjob "golang" --filter-include backend --filter-exclude senior
 ```
 
-### Buscar em todos os ATS
+### Search all ATS sources
 
 ```bash
 findmyjob "backend engineer" -g ats -m 10
 ```
 
-## Contribuindo
+## Contributing
 
-1. Faça um fork do projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-feature`)
-3. Commit suas mudanças (`git commit -am 'Adiciona nova feature'`)
-4. Push para a branch (`git push origin feature/nova-feature`)
-5. Abra um Pull Request
+1. Fork the project
+2. Create a branch for your feature (`git checkout -b feature/new-feature`)
+3. Commit your changes (`git commit -am 'Add new feature'`)
+4. Push to the branch (`git push origin feature/new-feature`)
+5. Open a Pull Request
 
-## Licença
+## License
 
-Este projeto é uso pessoal/educação.
+This project is for personal/educational use.

@@ -24,6 +24,7 @@ dist/
 .tox/
 
 *.json
+*.csv
 *.xls
 *.xlsx
 
@@ -36,3 +37,6 @@ dist/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Windows / WSL alternate data streams
+*:Zone.Identifier

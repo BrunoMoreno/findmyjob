@@ -1,6 +1,6 @@
-"""FindMyJob - Buscador de vagas via dorks."""
+"""FindMyJob - Job search via dorks."""
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __all__ = [
     "main",
     "search_ddg",

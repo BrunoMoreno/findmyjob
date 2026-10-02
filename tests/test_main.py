@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Testes automatizados para o findmyjob."""
+"""Automated tests for findmyjob."""
 
 import json
 import os
@@ -10,7 +10,7 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-# Adiciona o diretório pai ao path
+# Add the parent directory to the path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from findmyjob.cli import (
@@ -41,7 +41,7 @@ from findmyjob.cli import (
 
 
 class TestCountryTerm(unittest.TestCase):
-    """Testes para country_term()."""
+    """Tests for country_term()."""
 
     def test_single_name(self):
         country = {"names": ["Portugal"]}
@@ -57,7 +57,7 @@ class TestCountryTerm(unittest.TestCase):
 
 
 class TestDomainsFor(unittest.TestCase):
-    """Testes para domains_for()."""
+    """Tests for domains_for()."""
 
     def test_boards_no_country(self):
         result = domains_for("boards", None)
@@ -83,11 +83,11 @@ class TestDomainsFor(unittest.TestCase):
         country = COUNTRIES["br"]
         result = domains_for("ats", country)
         self.assertIn("boards.greenhouse.io", result)
-        self.assertNotIn("gupy.io", result)  # extra só vai para boards/all
+        self.assertNotIn("gupy.io", result)  # extra only goes to boards/all
 
 
 class TestPlanQueries(unittest.TestCase):
-    """Testes para plan_queries()."""
+    """Tests for plan_queries()."""
 
     def test_basic_query(self):
         plan = plan_queries("backend engineer", ["remote"], "boards", None)
@@ -119,7 +119,7 @@ class TestPlanQueries(unittest.TestCase):
 
 
 class TestFilterJobs(unittest.TestCase):
-    """Testes para filter_jobs()."""
+    """Tests for filter_jobs()."""
 
     def setUp(self):
         self.jobs = [
@@ -154,28 +154,28 @@ class TestFilterJobs(unittest.TestCase):
 
 
 class TestDefaultBasename(unittest.TestCase):
-    """Testes para default_basename()."""
+    """Tests for default_basename()."""
 
     def test_simple_role(self):
         result = default_basename("backend engineer")
-        self.assertTrue(result.startswith("vagas_backend-engineer_"))
+        self.assertTrue(result.startswith("jobs_backend-engineer_"))
 
     def test_role_with_special_chars(self):
         result = default_basename("backend/engineer (senior)")
-        self.assertTrue(result.startswith("vagas_backend-engineer-senior_"))
+        self.assertTrue(result.startswith("jobs_backend-engineer-senior_"))
 
     def test_empty_role(self):
         result = default_basename("")
-        self.assertTrue(result.startswith("vagas_vagas_"))
+        self.assertTrue(result.startswith("jobs_jobs_"))
 
 
 class TestSaveJson(unittest.TestCase):
-    """Testes para save_json()."""
+    """Tests for save_json()."""
 
     def test_save_and_load(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "test.json")
-            meta = {"role": "test", "scope": "geral"}
+            meta = {"role": "test", "scope": "general"}
             jobs = [{"title": "Job 1", "link": "http://1"}]
 
             save_json(path, meta, jobs)
@@ -189,12 +189,12 @@ class TestSaveJson(unittest.TestCase):
 
 
 class TestSaveXlsx(unittest.TestCase):
-    """Testes para save_xlsx()."""
+    """Tests for save_xlsx()."""
 
     def test_save_xlsx(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "test.xlsx")
-            meta = {"role": "test", "scope": "geral"}
+            meta = {"role": "test", "scope": "general"}
             jobs = [{"title": "Job 1", "link": "http://1", "domain": "test.com",
                      "location": "remote", "query": "test"}]
 
@@ -204,7 +204,7 @@ class TestSaveXlsx(unittest.TestCase):
 
 
 class TestSearchDdg(unittest.TestCase):
-    """Testes para search_ddg()."""
+    """Tests for search_ddg()."""
 
     @patch("ddgs.DDGS")
     def test_successful_search(self, mock_ddg_class):
@@ -241,7 +241,7 @@ class TestSearchDdg(unittest.TestCase):
 
 
 class TestSearchGoogle(unittest.TestCase):
-    """Testes para search_google()."""
+    """Tests for search_google()."""
 
     @patch.dict(os.environ, {"GOOGLE_API_KEY": "test_key", "GOOGLE_CX": "test_cx"})
     @patch("requests.get")
@@ -266,7 +266,7 @@ class TestSearchGoogle(unittest.TestCase):
 
 
 class TestCountries(unittest.TestCase):
-    """Testes para configuração de países."""
+    """Tests for the country configuration."""
 
     def test_all_countries_have_required_keys(self):
         required_keys = ["names", "region", "gl", "indeed", "extra"]
@@ -279,7 +279,7 @@ class TestCountries(unittest.TestCase):
 
 
 class TestParsePostedDate(unittest.TestCase):
-    """Testes para parse_posted_date()."""
+    """Tests for parse_posted_date()."""
 
     def setUp(self):
         from datetime import datetime
@@ -307,12 +307,12 @@ class TestParsePostedDate(unittest.TestCase):
                          "2026-09-28")
 
     def test_unknown(self):
-        self.assertIsNone(parse_posted_date("sem data", now=self.now))
+        self.assertIsNone(parse_posted_date("no date", now=self.now))
         self.assertIsNone(parse_posted_date(None, now=self.now))
 
 
 class TestExtractCompany(unittest.TestCase):
-    """Testes para extract_company()."""
+    """Tests for extract_company()."""
 
     def test_ats_urls(self):
         self.assertEqual(extract_company("https://jobs.lever.co/acme-corp/1"), "Acme Corp")
@@ -334,7 +334,7 @@ class TestExtractCompany(unittest.TestCase):
 
 
 class TestSaveCsv(unittest.TestCase):
-    """Testes para save_csv()."""
+    """Tests for save_csv()."""
 
     def test_writes_expected_columns(self):
         tmp = tempfile.mkdtemp()
@@ -354,7 +354,7 @@ class TestSaveCsv(unittest.TestCase):
 
 
 class TestNormalizeUrl(unittest.TestCase):
-    """Testes para normalize_url()."""
+    """Tests for normalize_url()."""
 
     def test_removes_tracking(self):
         url = "HTTPS://Example.com/job/1/?utm_source=x&gclid=abc&a=1#frag"
@@ -365,29 +365,29 @@ class TestNormalizeUrl(unittest.TestCase):
 
 
 class TestFilterJobsDates(unittest.TestCase):
-    """Testes para o filtro de datas."""
+    """Tests for o filtro de datas."""
 
     def _jobs(self):
         from datetime import datetime, timedelta
         now = datetime.now()
         return [
-            {"title": "recente", "link": "1",
+            {"title": "recent", "link": "1",
              "posted_at": (now - timedelta(days=1)).isoformat()},
-            {"title": "antiga", "link": "2",
+            {"title": "old", "link": "2",
              "posted_at": (now - timedelta(days=30)).isoformat()},
             {"title": "snippet", "link": "3", "snippet": "posted 2 days ago"},
-            {"title": "sem data", "link": "4"},
+            {"title": "no date", "link": "4"},
         ]
 
     def test_max_days_keeps_unknown(self):
         result = filter_jobs(self._jobs(), max_days=3)
         titles = {j["title"] for j in result}
-        self.assertEqual(titles, {"recente", "snippet", "sem data"})
+        self.assertEqual(titles, {"recent", "snippet", "no date"})
 
     def test_max_days_strict(self):
         result = filter_jobs(self._jobs(), max_days=3, keep_unknown_dates=False)
         titles = {j["title"] for j in result}
-        self.assertEqual(titles, {"recente", "snippet"})
+        self.assertEqual(titles, {"recent", "snippet"})
 
     def test_max_days_zero_disables(self):
         self.assertEqual(len(filter_jobs(self._jobs(), max_days=0)), 4)
@@ -396,21 +396,21 @@ class TestFilterJobsDates(unittest.TestCase):
         from datetime import datetime, timedelta
         now = datetime.now()
         jobs = [
-            {"title": "alvo", "link": "1", "posted_at": now.isoformat()},
-            {"title": "antiga", "link": "2",
+            {"title": "target", "link": "1", "posted_at": now.isoformat()},
+            {"title": "old", "link": "2",
              "posted_at": (now - timedelta(days=40)).isoformat()},
-            {"title": "sem data", "link": "3"},
+            {"title": "no date", "link": "3"},
         ]
         lo = (now - timedelta(days=5)).strftime("%Y-%m-%d")
         hi = now.strftime("%Y-%m-%d")
         result = filter_jobs(jobs, min_date=lo, max_date=hi)
-        self.assertEqual({j["title"] for j in result}, {"alvo", "sem data"})
+        self.assertEqual({j["title"] for j in result}, {"target", "no date"})
         strict = filter_jobs(jobs, min_date=lo, max_date=hi, keep_unknown_dates=False)
-        self.assertEqual({j["title"] for j in strict}, {"alvo"})
+        self.assertEqual({j["title"] for j in strict}, {"target"})
 
 
 class TestDatabase(unittest.TestCase):
-    """Testes para persistência em SQLite."""
+    """Tests for SQLite persistence."""
 
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
@@ -445,11 +445,11 @@ class TestDatabase(unittest.TestCase):
         with patch("sys.stdout", new=StringIO()) as out:
             rc = db_command(["--db", self.db, "stats"])
         self.assertEqual(rc, 0)
-        self.assertIn("Total de vagas", out.getvalue())
+        self.assertIn("Total jobs", out.getvalue())
 
 
 class TestMainCli(unittest.TestCase):
-    """Testes para o entry point."""
+    """Tests for o entry point."""
 
     def test_show_queries_returns_zero(self):
         with patch("sys.stdout", new=StringIO()):
@@ -469,7 +469,7 @@ class TestMainCli(unittest.TestCase):
             with patch("sys.stdout", new=StringIO()) as out:
                 rc = main(["db", "--db", os.path.join(tmp, "t.db"), "stats"])
             self.assertEqual(rc, 0)
-            self.assertIn("Total de vagas", out.getvalue())
+            self.assertIn("Total jobs", out.getvalue())
         finally:
             import shutil
             shutil.rmtree(tmp, ignore_errors=True)
