@@ -198,7 +198,8 @@ BACKENDS = {"ddg": search_ddg, "google": search_google}
 def filter_jobs(jobs: list[dict], min_date: str | None = None,
                 max_date: str | None = None,
                 keywords: list[str] | None = None,
-                exclude_keywords: list[str] | None = None) -> list[dict]:
+                exclude_keywords: list[str] | None = None,
+                max_days: int = 3) -> list[dict]:
     """
     Filtra vagas por data e palavras-chave.
 
@@ -208,6 +209,7 @@ def filter_jobs(jobs: list[dict], min_date: str | None = None,
         max_date: Data máxima (formato: YYYY-MM-DD)
         keywords: Palavras-chave que devem estar no título
         exclude_keywords: Palavras-chave que NÃO devem estar no título
+        max_days: Idade máxima em dias (padrão: 3)
 
     Returns:
         Lista de vagas filtradas
@@ -222,8 +224,31 @@ def filter_jobs(jobs: list[dict], min_date: str | None = None,
         filtered = [j for j in filtered
                     if not any(kw.lower() in j["title"].lower() for kw in exclude_keywords)]
 
-    # Nota: Filtro por data exigiria parsing do conteúdo da página
-    # ou metadados adicionais que não estão disponíveis nos resultados de busca
+    # Filtro por idade máxima (últimos N dias) - por padrão 3 dias
+    from datetime import datetime, timedelta
+    if max_days > 0:
+        cutoff = datetime.now() - timedelta(days=max_days)
+        filtered_new = []
+        for j in filtered:
+            posted = j.get("posted_at") or j.get("date") or j.get("published") or j.get("age_days")
+            keep = True
+            if posted is not None:
+                try:
+                    # Se for número (dias atrás)
+                    if isinstance(posted, (int, float)):
+                        if posted > max_days:
+                            keep = False
+                    else:
+                        # Tentar parse de string
+                        p = str(posted).replace("T", " ").split(".")[0]
+                        dt = datetime.fromisoformat(p)
+                        if dt < cutoff:
+                            keep = False
+                except Exception:
+                    keep = True  # se não conseguir parsear, mantem
+            if keep:
+                filtered_new.append(j)
+        filtered = filtered_new
 
     return filtered
 
@@ -406,7 +431,9 @@ def main(argv=None) -> None:
                 seen.add(r["link"])
                 jobs.append({"title": r["title"], "link": r["link"],
                              "domain": item["domain"], "location": item["location"],
-                             "query": item["query"]})
+                             "query": item["query"],
+                             "source": item["domain"],
+                             "posted_at": r.get("posted_at") or r.get("date") or r.get("published")})
                 print(f"   {paint('-', 'green')} {paint(r['title'], 'bold', 'green')}")
                 print("     " + paint(r["link"], "blue", "underline"))
             time.sleep(args.delay)
