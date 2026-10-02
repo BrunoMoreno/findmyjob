@@ -311,50 +311,6 @@ pytest -v
 ruff check .
 ```
 
-## Project Structure
-
-Files tracked in the repository:
-
-```
-findmyjob/
-├── .github/
-│   └── workflows/
-│       ├── tests.yml          # CI: tests and lint on push/PR
-│       └── publish-pypi.yml   # CI: publish to PyPI on release
-├── assets/
-│   └── logo.png               # Project logo
-├── docs/
-│   └── improvements.md        # Analysis and improvement plan
-├── src/
-│   └── findmyjob/
-│       ├── __init__.py        # Package exports and version
-│       ├── config.py          # Boards/ATS domains and country settings
-│       ├── console.py         # ANSI colors and logging
-│       ├── dates.py           # Posting-date parsing and filtering
-│       ├── dedup.py           # URL normalization for deduplication
-│       ├── enrich.py          # Best-effort company extraction
-│       ├── search.py          # DuckDuckGo/Google backends and query planning
-│       ├── db.py              # SQLite persistence
-│       ├── output.py          # JSON/XLSX/CSV writers
-│       ├── interactive.py     # Interactive prompt flow
-│       ├── ats.py             # ATS JSON APIs (Greenhouse, Lever, Ashby, SR)
-│       ├── discover.py        # ATS company discovery from dorks
-│       ├── cli.py             # Argument parsing, subcommands and orchestration
-│       └── __main__.py        # Entry point for python -m
-├── tests/
-│   ├── test_main.py           # Core tests
-│   └── test_ats.py            # ATS APIs, discovery and data-quality tests
-├── .gitignore                 # Files ignored by git
-├── LICENSE                    # MIT license
-├── pyproject.toml             # Package configuration (PEP 621)
-├── README.md                  # Documentation
-└── requirements.txt           # Pinned dependencies
-```
-
-Generated at runtime and not tracked (see [Output](#output)): the SQLite
-database (`findmyjob.db`) and the `jobs_*.json`, `jobs_*.csv` and
-`jobs_*.xlsx` result files. Virtual environments such as `env/` are local too.
-
 ## Usage Examples
 
 ### Search for Python jobs in Brazil
