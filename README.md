@@ -220,6 +220,7 @@ findmyjob/
 ├── pyproject.toml             # Package configuration (PEP 621)
 ├── requirements.txt           # Dependencies
 ├── README.md                  # Documentation
+├── LICENSE                    # MIT license
 ├── .gitignore                 # Files ignored by git
 ├── env/                       # Virtual environment (optional)
 ├── findmyjob.db               # SQLite database (generated with --db)
@@ -258,4 +259,4 @@ findmyjob "backend engineer" -g ats -m 10
 
 ## License
 
-This project is for personal/educational use.
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
