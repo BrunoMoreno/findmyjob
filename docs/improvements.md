@@ -3,7 +3,7 @@
 Record of the improvements delivered and a list of ideas that remain open.
 Historical diagnosis (the original problems) is kept at the bottom for
 context; everything in the "Delivered" section is implemented, tested and
-shipped.
+shipped. Forward-looking planning lives in [`roadmap.md`](roadmap.md).
 
 ---
 
