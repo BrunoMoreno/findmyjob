@@ -48,7 +48,7 @@ jobs:
     environment:
       name: pypi
       # OPTIONAL: uncomment and update to include your PyPI project URL
-      url: https://pypi.org/p/jobsearch
+      url: https://pypi.org/p/getajob
 
     steps:
       - name: Retrieve release distributions

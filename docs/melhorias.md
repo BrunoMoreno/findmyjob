@@ -1,4 +1,4 @@
-# Análise e Plano de Melhorias - JobSearch
+# Análise e Plano de Melhorias - GetAJob
 
 Documento detalhado com o diagnóstico do projeto, problemas identificados, oportunidades de evolução e o plano de implementação técnica por branches.
 
@@ -6,26 +6,26 @@ Documento detalhado com o diagnóstico do projeto, problemas identificados, opor
 
 ## 1. Diagnóstico do Projeto
 
-O **JobSearch** é um buscador de vagas focado em portais de emprego e sistemas ATS (Applicant Tracking Systems) via dorks de motores de busca (DuckDuckGo e Google Custom Search). O projeto possui uma proposta enxuta e eficiente, mas acumulou algumas inconsistências técnicas, campos incompletos e ausência de automação de testes e consultas.
+O **GetAJob** é um buscador de vagas focado em portais de emprego e sistemas ATS (Applicant Tracking Systems) via dorks de motores de busca (DuckDuckGo e Google Custom Search). O projeto possui uma proposta enxuta e eficiente, mas acumulou algumas inconsistências técnicas, campos incompletos e ausência de automação de testes e consultas.
 
 ---
 
 ## 2. Problemas e Limitações Identificados
 
 ### 2.1 Incompatibilidade de Versão Python
-- **Local:** `pyproject.toml` e `src/jobsearch/cli.py`
+- **Local:** `pyproject.toml` e `src/getajob/cli.py`
 - **Problema:** O `pyproject.toml` especifica `requires-python = ">=3.8"`, mas o código em `cli.py` utiliza anotações de tipo de união da PEP 604 (`dict | None`, `list[str] | None`), válidas nativamente apenas no Python 3.10+. No Python 3.8/3.9 ocorre erro fatal ao importar o pacote.
 - **Ação:** Adicionar `from __future__ import annotations` nos arquivos de código para retrocompatibilidade ou atualizar a restrição do projeto.
 
 ### 2.2 Código Incompleto e Efeito Colateral em `filter_jobs`
-- **Local:** `src/jobsearch/cli.py` (`filter_jobs`)
+- **Local:** `src/getajob/cli.py` (`filter_jobs`)
 - **Problema:**
   1. Os parâmetros `min_date` e `max_date` constam na assinatura da função e na docstring, mas não têm nenhuma linha de implementação no corpo da função.
   2. `max_days: int = 3` é o valor padrão. Quando o usuário executa `--filter-include termo`, a função descarta silenciosamente qualquer vaga com mais de 3 dias caso haja data, enquanto uma busca sem filtros não descarta. Além disso, não há opção `--max-days` na linha de comando.
 - **Ação:** Implementar o filtro real de datas (`min_date` e `max_date`), ajustar o padrão de `max_days` para não filtrar datas inesperadamente e expor flag CLI `--max-days`.
 
 ### 2.3 Dados Descartados e Colunas Vazias no SQLite
-- **Local:** `src/jobsearch/cli.py` (`search_ddg`, `search_google`, `main`, `save_to_db`)
+- **Local:** `src/getajob/cli.py` (`search_ddg`, `search_google`, `main`, `save_to_db`)
 - **Problema:**
   1. O campo `body` retornado pelo DuckDuckGo e `snippet` retornado pelo Google contêm o resumo/descrição da vaga, mas são descartados nos backends.
   2. A tabela SQLite possui colunas `company TEXT` e `description TEXT`, mas no loop principal (`main`) esses campos sequer são adicionados ao dicionário da vaga. O banco sempre salva `NULL` nessas colunas.
@@ -33,12 +33,12 @@ O **JobSearch** é um buscador de vagas focado em portais de emprego e sistemas 
 - **Ação:** Capturar `body`/`snippet`, extrair a empresa automaticamente de URLs e títulos, preencher os campos `company` e `description` no fluxo principal e exibi-los no JSON, Excel e SQLite.
 
 ### 2.4 Deduplicação e Parâmetros de Tracking em URLs
-- **Local:** `src/jobsearch/cli.py` (`main`)
+- **Local:** `src/getajob/cli.py` (`main`)
 - **Problema:** URLs que apontam para a mesma vaga mas trazem parâmetros de campanhas ou analytics (ex.: `utm_source`, `utm_medium`, `lever-source`) são tratadas como vagas distintas, gerando duplicidade no conjunto em memória e no banco SQLite.
 - **Ação:** Implementar função de normalização de URLs (removendo UTMs e parâmetros de rastreamento conhecidos).
 
 ### 2.5 Exportação e Ferramentas do Banco SQLite
-- **Local:** `src/jobsearch/cli.py`
+- **Local:** `src/getajob/cli.py`
 - **Problema:**
   1. O usuário salva no SQLite com `--db`, mas a ferramenta não oferece comandos para listar ou analisar o que foi salvo.
   2. Falta de formato CSV, que é padrão, leve e sem dependências extras.
@@ -57,10 +57,10 @@ O **JobSearch** é um buscador de vagas focado em portais de emprego e sistemas 
 - **Ação:** Adicionar testes completos de SQLite e novos recursos, silenciar saída nos mocks de teste e criar workflow de CI `.github/workflows/tests.yml`.
 
 ### 2.7 Manutenção e Configuração do Repositório
-- **Local:** `.gitignore` e `src/jobsearch/__init__.py`
+- **Local:** `.gitignore` e `src/getajob/__init__.py`
 - **Problema:**
   1. `.gitignore` não inclui arquivos de banco de dados (`*.db`, `*.sqlite`, `*.sqlite3`).
-  2. `src/jobsearch/__init__.py` não atualizou `__all__` com as novas funções e exceções públicas.
+  2. `src/getajob/__init__.py` não atualizou `__all__` com as novas funções e exceções públicas.
 - **Ação:** Atualizar `.gitignore` e alinhar `__all__`.
 
 ---
@@ -71,7 +71,7 @@ Para manter o histórico do Git limpo, modular e de fácil revisão, a implement
 
 1. **`fix/compat-exports-gitignore`**:
    - Adicionar `from __future__ import annotations`.
-   - Atualizar `__all__` e exports em `src/jobsearch/__init__.py`.
+   - Atualizar `__all__` e exports em `src/getajob/__init__.py`.
    - Atualizar `.gitignore` para ignorar bancos SQLite (`*.db`, `*.sqlite`, `*.sqlite3`).
 
 2. **`feat/data-enrichment-company-description`**:

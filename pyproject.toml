@@ -3,14 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "jobsearch"
+name = "getajob"
 dynamic = ["version"]
 description = "Busca de vagas via dorks em portais de emprego e ATS"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
 authors = [{ name = "Bruno Moreno" }]
-keywords = ["jobs", "vagas", "job-search", "ats", "indeed", "linkedin"]
+keywords = ["jobs", "vagas", "get-a-job", "ats", "indeed", "linkedin"]
 dependencies = [
     "ddgs",
     "requests",
@@ -24,16 +24,18 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/BrunoMoreno/job-search"
+Homepage = "https://github.com/BrunoMoreno/get-a-job"
+Repository = "https://github.com/BrunoMoreno/get-a-job"
+Issues = "https://github.com/BrunoMoreno/get-a-job/issues"
 
 [project.scripts]
-jobsearch = "jobsearch.cli:main"
+getajob = "getajob.cli:main"
 
 [tool.hatch.version]
-path = "src/jobsearch/__init__.py"
+path = "src/getajob/__init__.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/jobsearch"]
+packages = ["src/getajob"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

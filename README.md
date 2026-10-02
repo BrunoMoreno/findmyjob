@@ -1,4 +1,4 @@
-# JobSearch - Buscador de Vagas
+# GetAJob - Buscador de Vagas
 
 Buscador de vagas de emprego que utiliza "dorks" (consultas avançadas de busca) para encontrar vagas em portais de emprego e sistemas de acompanhamento de candidatos (ATS).
 
@@ -43,12 +43,12 @@ pip install -r requirements.txt
 
 ## Uso
 
-Após instalar o pacote (`pip install .`), você pode usar o comando `jobsearch` diretamente.
+Após instalar o pacote (`pip install .`), você pode usar o comando `getajob` diretamente.
 
 ### Modo Interativo
 
 ```bash
-jobsearch
+getajob
 ```
 
 O script irá perguntar sobre o cargo, país, local e fontes de busca.
@@ -57,62 +57,62 @@ O script irá perguntar sobre o cargo, país, local e fontes de busca.
 
 ```bash
 # Busca geral
-jobsearch "backend engineer" -l remote -l latam
+getajob "backend engineer" -l remote -l latam
 
 # Busca apenas no Brasil
-jobsearch "backend engineer" -c br
+getajob "backend engineer" -c br
 
 # Brasil + remoto + apenas ATS
-jobsearch "backend engineer" -c br -l remote --group ats
+getajob "backend engineer" -c br -l remote --group ats
 
 # Com filtros de palavras-chave
-jobsearch "backend engineer" --filter-include senior --filter-exclude junior
+getajob "backend engineer" --filter-include senior --filter-exclude junior
 
 # Salvar em banco SQLite (ideal para cronjobs)
-jobsearch "python developer" -c br --db ~/jobsearch.db
+getajob "python developer" -c br --db ~/getajob.db
 
 # Salvar apenas no banco, sem arquivos
-jobsearch "golang" --db jobsearch.db --no-json --no-xlsx
+getajob "golang" --db getajob.db --no-json --no-xlsx
 
 # Também gerar CSV
-jobsearch "golang" --csv
+getajob "golang" --csv
 
 # Somente vagas publicadas nos últimos 3 dias (descarta as sem data)
-jobsearch "backend engineer" -c br --max-days 3 --strict-dates
+getajob "backend engineer" -c br --max-days 3 --strict-dates
 
 # Filtrar por intervalo de datas
-jobsearch "backend engineer" --min-date 2026-09-01 --max-date 2026-10-01
+getajob "backend engineer" --min-date 2026-09-01 --max-date 2026-10-01
 
 # Modo silencioso + log em arquivo (bom para cron)
-jobsearch "backend engineer" --db ~/jobsearch.db --quiet --log-file ~/jobsearch.log
+getajob "backend engineer" --db ~/getajob.db --quiet --log-file ~/getajob.log
 
 # Listar países disponíveis
-jobsearch --list-countries
+getajob --list-countries
 
 # Apenas mostrar as queries (sem executar busca)
-jobsearch "backend engineer" --show-queries
+getajob "backend engineer" --show-queries
 ```
 
 Também é possível usar como módulo Python:
 
 ```bash
-python -m jobsearch "backend engineer" -c br
+python -m getajob "backend engineer" -c br
 ```
 
 ### Utilitários do banco
 
 ```bash
 # Estatísticas do banco
-jobsearch db --db ~/jobsearch.db stats
+getajob db --db ~/getajob.db stats
 
 # Exportar tudo para JSON ou CSV (stdout ou arquivo)
-jobsearch db --db ~/jobsearch.db export --format csv -o vagas.csv
+getajob db --db ~/getajob.db export --format csv -o vagas.csv
 
 # Exportar apenas as vagas dos últimos 7 dias
-jobsearch db --db ~/jobsearch.db export --since-days 7
+getajob db --db ~/getajob.db export --since-days 7
 
 # Remover vagas vistas há mais de 30 dias (pede confirmação)
-jobsearch db --db ~/jobsearch.db purge --older-than 30
+getajob db --db ~/getajob.db purge --older-than 30
 ```
 
 ### Uso em cronjob
@@ -122,9 +122,9 @@ em erros fatais — útil para monitoramento. Exemplo de entrada no `crontab`:
 
 ```cron
 # Todo dia às 8h: busca vagas recentes e grava no banco
-0 8 * * * /usr/local/bin/jobsearch "backend engineer" -c br -l remote \
-  --max-days 3 --strict-dates --db "$HOME/jobsearch.db" \
-  --no-json --no-xlsx --quiet --log-file "$HOME/jobsearch.log"
+0 8 * * * /usr/local/bin/getajob "backend engineer" -c br -l remote \
+  --max-days 3 --strict-dates --db "$HOME/getajob.db" \
+  --no-json --no-xlsx --quiet --log-file "$HOME/getajob.log"
 ```
 
 ### Usando Google Custom Search (Opcional)
@@ -132,7 +132,7 @@ em erros fatais — útil para monitoramento. Exemplo de entrada no `crontab`:
 ```bash
 export GOOGLE_API_KEY="sua_chave"
 export GOOGLE_CX="seu_cx"
-jobsearch "backend engineer" -b google
+getajob "backend engineer" -b google
 ```
 
 ## Argumentos
@@ -158,7 +158,7 @@ jobsearch "backend engineer" -b google
 | `--strict-dates` | Descarta vagas sem data identificável |
 | `--min-date` | Data mínima de publicação (YYYY-MM-DD) |
 | `--max-date` | Data máxima de publicação (YYYY-MM-DD) |
-| `--db` | Salvar resultados em banco SQLite (ex.: jobsearch.db) |
+| `--db` | Salvar resultados em banco SQLite (ex.: getajob.db) |
 | `--csv` | Também salvar arquivo CSV |
 | `--no-json` | Não salvar arquivo JSON |
 | `--no-xlsx` | Não salvar arquivo XLSX |
@@ -193,13 +193,13 @@ ruff check .
 ## Estrutura do Projeto
 
 ```
-jobsearch/
+get-a-job/
 ├── .github/
 │   └── workflows/
 │       ├── tests.yml          # CI: testes e lint em push/PR
 │       └── publish-pypi.yml   # CI: publica no PyPI ao criar release
 ├── src/
-│   └── jobsearch/
+│   └── getajob/
 │       ├── __init__.py        # Exports do pacote
 │       ├── cli.py             # Lógica principal + CLI
 │       └── __main__.py        # Entry point para python -m
@@ -210,7 +210,7 @@ jobsearch/
 ├── README.md                  # Documentação
 ├── .gitignore                 # Arquivos ignorados pelo git
 ├── env/                       # Virtual environment (opcional)
-├── jobsearch.db               # Banco SQLite (gerado com --db)
+├── getajob.db                 # Banco SQLite (gerado com --db)
 ├── vagas_*.json               # Resultados em JSON
 ├── vagas_*.csv                # Resultados em CSV (com --csv)
 └── vagas_*.xlsx               # Resultados em Excel
@@ -221,19 +221,19 @@ jobsearch/
 ### Buscar vagas de Python no Brasil
 
 ```bash
-jobsearch "python developer" -c br -l remote
+getajob "python developer" -c br -l remote
 ```
 
 ### Buscar vagas de Go com filtro
 
 ```bash
-jobsearch "golang" --filter-include backend --filter-exclude senior
+getajob "golang" --filter-include backend --filter-exclude senior
 ```
 
 ### Buscar em todos os ATS
 
 ```bash
-jobsearch "backend engineer" -g ats -m 10
+getajob "backend engineer" -g ats -m 10
 ```
 
 ## Contribuindo
