@@ -28,13 +28,13 @@ dist/
 *.xls
 *.xlsx
 
-# Banco de dados SQLite
+# SQLite database
 *.db
 *.db-journal
 *.db-wal
 *.db-shm
 
-# Sistema
+# OS
 .DS_Store
 Thumbs.db
 
