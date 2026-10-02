@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import sys
@@ -29,8 +30,38 @@ log = logging.getLogger("findmyjob")
 QUIET = False
 
 
+class JsonFormatter(logging.Formatter):
+    """
+    Render each record as a single JSON object (one line).
+
+    Standard fields are ``ts``, ``level``, ``logger`` and ``message``. Any
+    keyword passed through ``logging``'s ``extra=`` is copied in, so structured
+    fields survive into log pipelines.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._standard = set(
+            logging.LogRecord("", 0, "", 0, "", (), None).__dict__
+        )
+
+    def format(self, record: logging.LogRecord) -> str:
+        payload: dict = {
+            "ts": self.formatTime(record, "%Y-%m-%dT%H:%M:%S"),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        for key, value in record.__dict__.items():
+            if key not in self._standard and not key.startswith("_"):
+                payload[key] = value
+        if record.exc_info:
+            payload["exception"] = self.formatException(record.exc_info)
+        return json.dumps(payload, ensure_ascii=False, default=str)
+
+
 def setup_logging(log_file: str | None = None, quiet: bool = False,
-                  verbose: bool = False) -> None:
+                  verbose: bool = False, json_format: bool = False) -> None:
     """Configure logging to stdout/stderr and, optionally, to a file."""
     global QUIET
     QUIET = quiet
@@ -38,8 +69,11 @@ def setup_logging(log_file: str | None = None, quiet: bool = False,
     log.setLevel(level)
     log.handlers.clear()
 
-    fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s",
-                            datefmt="%Y-%m-%d %H:%M:%S")
+    if json_format:
+        fmt: logging.Formatter = JsonFormatter()
+    else:
+        fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s",
+                                datefmt="%Y-%m-%d %H:%M:%S")
 
     stream = logging.StreamHandler(sys.stderr)
     stream.setFormatter(fmt)

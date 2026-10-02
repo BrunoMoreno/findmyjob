@@ -162,10 +162,10 @@ collect -> normalize -> deduplicate -> persist -> reconcile status -> serve.
 
 - [x] `JobPosting` Pydantic model across all fetchers.
 - [x] Expose `external_id` / provider in ATS results.
-- [ ] Configurable concurrency for ATS requests.
+- [x] Configurable concurrency for ATS requests.
 - [x] Reconciliation command (`db mark-stale`) and run records.
 - [ ] Postgres sink (`sync --dsn`).
-- [ ] Structured logging and metrics.
+- [x] Structured logging and metrics.
 
 ### Phase 2 - Scale
 

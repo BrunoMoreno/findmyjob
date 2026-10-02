@@ -51,6 +51,7 @@ from .dedup import normalize_url
 from .discover import discover_targets, extract_ats_target, extract_ats_targets, save_targets
 from .enrich import extract_company
 from .interactive import ask, default_basename, interactive_prompts
+from .metrics import emit_run_summary, run_summary
 from .models import JobPosting
 from .output import save_csv, save_json, save_xlsx
 from .search import (
@@ -89,6 +90,10 @@ def _add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("-q", "--quiet", action="store_true", help="suppress progress output")
     parser.add_argument("-v", "--verbose", action="store_true", help="detailed logging")
     parser.add_argument("--log-file", help="log file (append)")
+    parser.add_argument("--log-json", action="store_true",
+                        help="write logs as JSON lines (structured logging)")
+    parser.add_argument("--metrics-file",
+                        help="write a JSON run summary to this file")
     _add_version_arg(parser)
 
 
@@ -288,6 +293,7 @@ def db_command(argv: list[str]) -> int:
 
 def _ats_fetch(args: argparse.Namespace) -> int:
     started = datetime.now().isoformat(timespec="seconds")
+    started_mono = time.monotonic()
     targets_path = Path(args.targets)
     if not targets_path.exists():
         log.error("targets file not found: %s", targets_path)
@@ -329,20 +335,34 @@ def _ats_fetch(args: argparse.Namespace) -> int:
     base_default = f"ats_jobs_{datetime.now():%Y%m%d_%H%M}"
     saved = _write_outputs(args, jobs, meta, base_default)
 
+    inserted = 0
     if args.db:
         try:
             init_db(args.db)
             inserted = save_to_db(jobs, args.db)
-            run_status = ("failed" if total_targets and len(errors) >= total_targets
-                          else "partial" if errors else "ok")
-            record_run(args.db, "ats", scope=str(targets_path),
-                       targets=total_targets, fetched=len(jobs), inserted=inserted,
-                       errors=len(errors), status=run_status, started_at=started,
-                       details={"providers": sorted(targets)})
             log.info("%d new jobs saved to the database %s", inserted, _get_db_path(args.db))
         except Exception as e:  # noqa: BLE001
             log.error("failed to save to the database: %s", e)
             errors.append(str(e))
+
+    run_status = ("failed" if total_targets and len(errors) >= total_targets
+                  else "partial" if errors else "ok")
+    summary = run_summary(
+        started=started_mono, kind="ats", scope=str(targets_path),
+        targets=total_targets, fetched=len(jobs), inserted=inserted,
+        errors=len(errors), status=run_status, providers=sorted(targets))
+
+    if args.db:
+        try:
+            record_run(args.db, "ats", scope=str(targets_path),
+                       targets=total_targets, fetched=len(jobs), inserted=inserted,
+                       errors=len(errors), status=run_status, started_at=started,
+                       details={"providers": sorted(targets),
+                                "duration_s": summary["duration_s"]})
+        except Exception as e:  # noqa: BLE001
+            log.error("failed to record run: %s", e)
+
+    emit_run_summary(summary, metrics_file=args.metrics_file)
 
     log.info("%d unique jobs found.", len(jobs))
     if saved:
@@ -442,7 +462,8 @@ def ats_command(argv: list[str]) -> int:
     if args.no_color:
         from . import console
         console.USE_COLOR = False
-    setup_logging(log_file=args.log_file, quiet=args.quiet, verbose=args.verbose)
+    setup_logging(log_file=args.log_file, quiet=args.quiet, verbose=args.verbose,
+                  json_format=args.log_json)
 
     if args.action == "fetch":
         return _ats_fetch(args)
@@ -488,6 +509,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("-q", "--quiet", action="store_true", help="suppress progress output")
     p.add_argument("-v", "--verbose", action="store_true", help="detailed logging")
     p.add_argument("--log-file", help="log file (append)")
+    p.add_argument("--log-json", action="store_true",
+                   help="write logs as JSON lines (structured logging)")
+    p.add_argument("--metrics-file", help="write a JSON run summary to this file")
     return p
 
 
@@ -507,7 +531,8 @@ def main(argv=None) -> int:
         from . import console
         console.USE_COLOR = False
 
-    setup_logging(log_file=args.log_file, quiet=args.quiet, verbose=args.verbose)
+    setup_logging(log_file=args.log_file, quiet=args.quiet, verbose=args.verbose,
+                  json_format=args.log_json)
 
     if args.list_countries:
         for k, v in COUNTRIES.items():
@@ -528,6 +553,7 @@ def main(argv=None) -> int:
     scope = country["names"][0] if country else "general"
     log.info("Scope: %s | %d queries", scope, len(plan))
     started = datetime.now().isoformat(timespec="seconds")
+    started_mono = time.monotonic()
 
     from . import console
 
@@ -595,21 +621,35 @@ def main(argv=None) -> int:
     }
     saved_list = _write_outputs(args, jobs, meta, default_basename(args.role))
 
+    inserted = 0
     if args.db:
         try:
             init_db(args.db)
             inserted = save_to_db(jobs, args.db)
-            run_status = ("failed" if plan and errors >= len(plan)
-                          else "partial" if errors else "ok")
-            record_run(args.db, "search", scope=scope, targets=len(plan),
-                       fetched=len(jobs), inserted=inserted, errors=errors,
-                       status=run_status, started_at=started,
-                       details={"role": args.role, "backend": args.backend,
-                                "country": args.country or ""})
             log.info("%d new jobs saved to the database %s", inserted, _get_db_path(args.db))
         except Exception as e:  # noqa: BLE001
             log.error("failed to save to the database: %s", e)
             errors += 1
+
+    run_status = ("failed" if plan and errors >= len(plan)
+                  else "partial" if errors else "ok")
+    summary = run_summary(
+        started=started_mono, kind="search", scope=scope, targets=len(plan),
+        fetched=len(jobs), inserted=inserted, errors=errors, status=run_status,
+        role=args.role, backend=args.backend, country=args.country or "")
+
+    if args.db:
+        try:
+            record_run(args.db, "search", scope=scope, targets=len(plan),
+                       fetched=len(jobs), inserted=inserted, errors=errors,
+                       status=run_status, started_at=started,
+                       details={"role": args.role, "backend": args.backend,
+                                "country": args.country or "",
+                                "duration_s": summary["duration_s"]})
+        except Exception as e:  # noqa: BLE001
+            log.error("failed to record run: %s", e)
+
+    emit_run_summary(summary, metrics_file=args.metrics_file)
 
     log.info("%d unique jobs found.", len(jobs))
     if saved_list:
