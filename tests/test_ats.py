@@ -28,6 +28,7 @@ from findmyjob.enrich import extract_company
 from findmyjob.search import _retry_notice
 
 GREENHOUSE = {"jobs": [{
+    "id": 1,
     "title": "Backend Engineer",
     "absolute_url": "https://boards.greenhouse.io/acme/jobs/1",
     "location": {"name": "Remote"},
@@ -36,6 +37,7 @@ GREENHOUSE = {"jobs": [{
 }]}
 
 LEVER = [{
+    "id": "abc",
     "text": "Platform Engineer",
     "hostedUrl": "https://jobs.lever.co/acme/abc",
     "categories": {"location": "Berlin"},
@@ -44,6 +46,7 @@ LEVER = [{
 }]
 
 ASHBY = {"jobs": [{
+    "id": "xyz",
     "title": "Data Engineer",
     "jobUrl": "https://jobs.ashbyhq.com/acme/xyz",
     "location": "NYC",
@@ -72,6 +75,8 @@ class TestAtsProviders(unittest.TestCase):
         self.assertEqual(len(jobs), 1)
         self.assertEqual(jobs[0]["title"], "Backend Engineer")
         self.assertEqual(jobs[0]["source"], "greenhouse")
+        self.assertEqual(jobs[0]["provider"], "greenhouse")
+        self.assertEqual(jobs[0]["external_id"], "1")
         self.assertEqual(jobs[0]["company"], "Acme")
         self.assertIn("Hi there !", jobs[0]["description"])
         self.assertNotIn("<b>", jobs[0]["description"])
@@ -81,18 +86,24 @@ class TestAtsProviders(unittest.TestCase):
             jobs = fetch_lever("acme")
         self.assertEqual(jobs[0]["title"], "Platform Engineer")
         self.assertEqual(jobs[0]["location"], "Berlin")
+        self.assertEqual(jobs[0]["provider"], "lever")
+        self.assertEqual(jobs[0]["external_id"], "abc")
         self.assertTrue(jobs[0]["posted_at"].startswith("2023-11-14"))
 
     def test_ashby_skips_unlisted(self):
         with patch("findmyjob.ats._http_json", return_value=ASHBY):
             jobs = fetch_ashby("acme")
         self.assertEqual([j["title"] for j in jobs], ["Data Engineer"])
+        self.assertEqual(jobs[0]["provider"], "ashby")
+        self.assertEqual(jobs[0]["external_id"], "xyz")
 
     def test_smartrecruiters_builds_web_url(self):
         with patch("findmyjob.ats._http_json", return_value=SMARTRECRUITERS):
             jobs = fetch_smartrecruiters("acme")
         self.assertEqual(jobs[0]["link"], "https://jobs.smartrecruiters.com/acme/123")
         self.assertEqual(jobs[0]["location"], "Paris, IDF, fr")
+        self.assertEqual(jobs[0]["provider"], "smartrecruiters")
+        self.assertEqual(jobs[0]["external_id"], "123")
 
 
 class TestLoadTargets(unittest.TestCase):
@@ -180,6 +191,46 @@ class TestInitDb(unittest.TestCase):
         finally:
             conn.close()
         self.assertIn("jobs", tables)
+
+    def test_migrates_legacy_schema(self):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        path = os.path.join(tmp, "legacy.db")
+        conn = sqlite3.connect(path)
+        conn.execute(
+            """
+            CREATE TABLE jobs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                link TEXT NOT NULL UNIQUE,
+                link_key TEXT,
+                source TEXT,
+                domain TEXT,
+                location TEXT,
+                query TEXT,
+                posted_at TEXT,
+                salary TEXT,
+                company TEXT,
+                description TEXT,
+                first_seen_at TEXT,
+                last_seen_at TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.commit()
+        conn.close()
+
+        init_db(path)
+
+        conn = sqlite3.connect(path)
+        try:
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(jobs)")}
+        finally:
+            conn.close()
+        self.assertIn("provider", cols)
+        self.assertIn("external_id", cols)
 
     def test_main_creates_db_even_without_jobs(self):
         import findmyjob.cli as cli

@@ -19,6 +19,8 @@ __all__ = [
     "db_stats",
     "db_export",
     "db_purge",
+    # Data model
+    "JobPosting",
     # ATS JSON APIs
     "fetch_greenhouse",
     "fetch_lever",
@@ -61,3 +63,4 @@ from .cli import (
     search_google,
 )
 from .discover import discover_targets, extract_ats_target, extract_ats_targets, save_targets
+from .models import JobPosting

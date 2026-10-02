@@ -441,6 +441,22 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(db_purge(self.db), 1)
         self.assertEqual(db_stats(self.db)["total"], 0)
 
+    def test_persists_provider_and_external_id(self):
+        save_to_db([{"title": "A", "link": "https://x.com/1",
+                     "provider": "greenhouse", "external_id": "42"}], self.db)
+        row = json.loads(db_export(self.db, fmt="json"))[0]
+        self.assertEqual(row["provider"], "greenhouse")
+        self.assertEqual(row["external_id"], "42")
+
+    def test_backfills_identity_on_existing_row(self):
+        save_to_db([{"title": "A", "link": "https://x.com/1"}], self.db)
+        # A later run that knows the identity should backfill it.
+        save_to_db([{"title": "A", "link": "https://x.com/1",
+                     "provider": "lever", "external_id": "9"}], self.db)
+        row = json.loads(db_export(self.db, fmt="json"))[0]
+        self.assertEqual(row["provider"], "lever")
+        self.assertEqual(row["external_id"], "9")
+
     def test_db_command_stats(self):
         save_to_db([{"title": "A", "link": "https://x.com/1"}], self.db)
         with patch("sys.stdout", new=StringIO()) as out:

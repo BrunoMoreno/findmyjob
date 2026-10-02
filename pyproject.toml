@@ -16,6 +16,7 @@ dependencies = [
     "ddgs",
     "requests",
     "openpyxl",
+    "pydantic>=2",
 ]
 
 [project.optional-dependencies]

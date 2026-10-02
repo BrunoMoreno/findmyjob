@@ -24,6 +24,7 @@ from pathlib import Path
 import requests
 
 from . import console
+from .models import JobPosting
 
 PROVIDERS = ("greenhouse", "lever", "ashby", "smartrecruiters")
 
@@ -91,21 +92,23 @@ def _http_json(url: str, params: dict | None = None, *, retries: int = 3,
 
 def _base_job(provider: str, slug: str, *, title: str, link: str,
               location: str = "", posted_at: str | None = None,
-              description: str = "") -> dict:
+              description: str = "", external_id: str | None = None) -> dict:
     domain = PROVIDER_DOMAINS.get(provider, provider)
     description = _clean_description(description)
-    return {
-        "title": title,
-        "link": link,
-        "company": _pretty_slug(slug),
-        "location": location,
-        "posted_at": posted_at,
-        "description": description,
-        "snippet": description,
-        "domain": domain,
-        "source": provider,
-        "query": f"ats:{provider}/{slug}",
-    }
+    return JobPosting(
+        title=title,
+        link=link,
+        company=_pretty_slug(slug),
+        location=location,
+        posted_at=posted_at,
+        description=description,
+        snippet=description,
+        domain=domain,
+        source=provider,
+        query=f"ats:{provider}/{slug}",
+        provider=provider,
+        external_id=external_id,
+    ).to_dict()
 
 
 def _ms_to_iso(value) -> str | None:
@@ -131,6 +134,7 @@ def fetch_greenhouse(slug: str, **kwargs) -> list[dict]:
             location=location,
             posted_at=item.get("first_published") or item.get("updated_at"),
             description=item.get("content", ""),
+            external_id=item.get("id"),
         ))
     return jobs
 
@@ -152,6 +156,7 @@ def fetch_lever(slug: str, **kwargs) -> list[dict]:
             location=categories.get("location", ""),
             posted_at=_ms_to_iso(item.get("createdAt")),
             description=description,
+            external_id=item.get("id"),
         ))
     return jobs
 
@@ -170,6 +175,7 @@ def fetch_ashby(slug: str, **kwargs) -> list[dict]:
             location=item.get("location", ""),
             posted_at=item.get("publishedAt"),
             description=item.get("descriptionHtml") or item.get("descriptionPlain", ""),
+            external_id=item.get("id"),
         ))
     return jobs
 
@@ -197,6 +203,7 @@ def fetch_smartrecruiters(slug: str, limit: int = 100, **kwargs) -> list[dict]:
             posted_at=item.get("releasedDate"),
             description=item.get("jobAd", {}).get("sections", {}).get("jobDescription", {}).get("text", "")
             if isinstance(item.get("jobAd"), dict) else "",
+            external_id=posting_id,
         ))
     return jobs
 

@@ -42,6 +42,8 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
             salary TEXT,
             company TEXT,
             description TEXT,
+            provider TEXT,
+            external_id TEXT,
             first_seen_at TEXT,
             last_seen_at TEXT,
             created_at TEXT NOT NULL,
@@ -51,12 +53,16 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
     )
     # Migration for databases created by earlier versions.
     cols = {row[1] for row in cur.execute("PRAGMA table_info(jobs)")}
-    for col in ("link_key", "first_seen_at", "last_seen_at"):
+    for col in ("link_key", "first_seen_at", "last_seen_at", "provider", "external_id"):
         if col not in cols:
             cur.execute(f"ALTER TABLE jobs ADD COLUMN {col} TEXT")
     cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_link_key ON jobs(link_key)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON jobs(created_at)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_jobs_source ON jobs(source)")
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_jobs_source_external_id "
+        "ON jobs(source, external_id)"
+    )
     conn.commit()
 
 
@@ -100,9 +106,10 @@ def save_to_db(jobs: list[dict], db: str | None = None) -> int:
                     """
                     INSERT OR IGNORE INTO jobs (
                         title, link, link_key, source, domain, location, query,
-                        posted_at, salary, company, description,
-                        first_seen_at, last_seen_at, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        posted_at, salary, company, description, provider,
+                        external_id, first_seen_at, last_seen_at, created_at,
+                        updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         j.get("title", ""),
@@ -116,6 +123,8 @@ def save_to_db(jobs: list[dict], db: str | None = None) -> int:
                         j.get("salary"),
                         j.get("company"),
                         j.get("snippet") or j.get("description"),
+                        j.get("provider"),
+                        j.get("external_id"),
                         now,
                         now,
                         now,
@@ -125,9 +134,24 @@ def save_to_db(jobs: list[dict], db: str | None = None) -> int:
                 if cur.rowcount > 0:
                     inserted += 1
                 else:
+                    # Refresh the lifecycle timestamps and backfill identity
+                    # columns on rows created by earlier versions.
                     cur.execute(
-                        "UPDATE jobs SET last_seen_at = ?, updated_at = ? WHERE link_key = ?",
-                        (now, now, normalize_url(link)),
+                        """
+                        UPDATE jobs SET
+                            last_seen_at = ?,
+                            updated_at = ?,
+                            provider = COALESCE(NULLIF(provider, ''), ?),
+                            external_id = COALESCE(NULLIF(external_id, ''), ?)
+                        WHERE link_key = ?
+                        """,
+                        (
+                            now,
+                            now,
+                            j.get("provider"),
+                            j.get("external_id"),
+                            normalize_url(link),
+                        ),
                     )
             except sqlite3.Error as e:
                 log.warning("Failed to save job to the database: %s", e)
