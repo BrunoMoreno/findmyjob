@@ -30,6 +30,7 @@ from pathlib import Path
 
 # Re-exported so `from findmyjob.cli import ...` keeps working (and so the
 # public API stays stable for existing scripts).
+from . import __version__
 from .ats import PROVIDERS, AtsError, fetch_targets, load_targets
 from .config import ATS, BOARDS, COUNTRIES, GROUPS
 from .console import log, paint, setup_logging
@@ -64,11 +65,17 @@ __all__ = [
 
 # ------------------------------------------------------------- common args --
 
+def _add_version_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("-V", "--version", action="version",
+                        version=f"findmyjob {__version__}")
+
+
 def _add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--no-color", action="store_true", help="disable colors")
     parser.add_argument("-q", "--quiet", action="store_true", help="suppress progress output")
     parser.add_argument("-v", "--verbose", action="store_true", help="detailed logging")
     parser.add_argument("--log-file", help="log file (append)")
+    _add_version_arg(parser)
 
 
 # -------------------------------------------------------------- job output --
@@ -130,6 +137,7 @@ def db_command(argv: list[str]) -> int:
     """Subcommands to inspect/manage the database: stats, export, purge."""
     parser = argparse.ArgumentParser(prog="findmyjob db",
                                      description="SQLite database utilities")
+    _add_version_arg(parser)
     parser.add_argument("--db", help="database path (default: ./findmyjob.db)")
     sub = parser.add_subparsers(dest="action", required=True)
 
@@ -286,6 +294,7 @@ def ats_command(argv: list[str]) -> int:
 
     parser = argparse.ArgumentParser(prog="findmyjob ats",
                                      description="Public ATS JSON APIs")
+    _add_version_arg(parser)
     sub = parser.add_subparsers(dest="action", required=True)
 
     p_fetch = sub.add_parser("fetch", parents=[common],
@@ -352,6 +361,7 @@ def ats_command(argv: list[str]) -> int:
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Search for jobs with search dorks")
+    _add_version_arg(p)
     p.add_argument("role", nargs="?", help='role, e.g. "backend engineer" (omit for interactive mode)')
     p.add_argument("-c", "--country", choices=COUNTRIES,
                    help="restrict the search to one country (omit for a general search)")

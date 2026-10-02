@@ -80,6 +80,20 @@ re-exported from `findmyjob.cli` for backward compatibility:
 - Test suite grown from 53 to 75 tests, covering the ATS providers,
   discovery, dedup fixes, company extraction and quiet retries.
 
+### 1.6 Maintenance fixes
+
+- **The database is created even when a run finds no jobs.** `save_to_db`
+  returned early on an empty list, so `--db` only produced a file when there
+  was something to insert. Runs that legitimately end with zero jobs — no
+  results, `--filter-*`, or `--strict-dates` on the default ddg backend —
+  silently left no database behind, which broke the documented cronjob.
+  `init_db(path)` now creates the file and schema up front, and the CLI calls
+  it whenever `--db` is passed (both the dork search and `ats fetch`).
+- **`--version` / `-V`** prints the installed version for `findmyjob`,
+  `findmyjob ats` and `findmyjob db`.
+
+The test suite is now at 78 tests.
+
 ---
 
 ## 2. Open ideas

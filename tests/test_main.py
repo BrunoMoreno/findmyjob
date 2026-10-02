@@ -18,6 +18,7 @@ from findmyjob.cli import (
     BOARDS,
     COUNTRIES,
     SearchError,
+    __version__,
     country_term,
     db_command,
     db_export,
@@ -473,6 +474,17 @@ class TestMainCli(unittest.TestCase):
         finally:
             import shutil
             shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_version_flag(self):
+        for argv in (["--version"], ["-V"], ["ats", "--version"],
+                     ["db", "--version"]):
+            with self.subTest(argv=argv):
+                with patch("sys.stdout", new=StringIO()) as out:
+                    with self.assertRaises(SystemExit) as cm:
+                        main(argv)
+                self.assertEqual(cm.exception.code, 0)
+                self.assertEqual(out.getvalue().strip(),
+                                 f"findmyjob {__version__}")
 
 
 if __name__ == "__main__":

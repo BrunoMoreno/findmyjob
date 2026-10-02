@@ -105,6 +105,9 @@ findmyjob --list-countries
 
 # Only show the queries (without running the search)
 findmyjob "backend engineer" --show-queries
+
+# Show the installed version
+findmyjob --version
 ```
 
 It can also be used as a Python module:
@@ -229,6 +232,7 @@ names are not, and may be empty when no company can be identified.
 | `--delay` | Seconds between queries (default: 2.0) |
 | `--retries` | Attempts on error (default: 3) |
 | `--show-queries` | Only print the queries |
+| `-V, --version` | Show the installed version |
 | `--no-color` | Disable colors |
 | `--list-countries` | List available countries |
 | `--filter-include` | Keywords that must be in the title |
