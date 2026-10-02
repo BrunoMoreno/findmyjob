@@ -17,7 +17,10 @@ from __future__ import annotations
 import html
 import json
 import re
+import threading
 import time
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
@@ -39,6 +42,18 @@ _HEADERS = {"User-Agent": "findmyjob (+https://github.com/BrunoMoreno/findmyjob)
 _TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"[ \t\r\f\v]+")
 _MAX_DESCRIPTION = 4000
+
+# One print lock keeps progress and retry output readable when several
+# companies are fetched in parallel.
+_PRINT_LOCK = threading.Lock()
+
+
+def _emit(message: str) -> None:
+    """Print a line atomically, unless --quiet was requested."""
+    if console.QUIET:
+        return
+    with _PRINT_LOCK:
+        print(message)
 
 
 class AtsError(Exception):
@@ -82,10 +97,9 @@ def _http_json(url: str, params: dict | None = None, *, retries: int = 3,
             last_error = e
             if attempt < retries - 1:
                 wait = backoff * (2 ** attempt)
-                if not console.QUIET:
-                    print(console.paint(
-                        f"      [retry {attempt + 1}/{retries}] {e}. "
-                        f"Retrying in {wait:.1f}s...", "yellow"))
+                _emit(console.paint(
+                    f"      [retry {attempt + 1}/{retries}] {e}. "
+                    f"Retrying in {wait:.1f}s...", "yellow"))
                 time.sleep(wait)
     raise AtsError(f"{last_error}")
 
@@ -257,15 +271,108 @@ def load_targets(path: str | Path) -> dict[str, list[str]]:
     return targets
 
 
+class _RateLimiter:
+    """Space request starts by at least ``delay`` seconds (process-wide)."""
+
+    def __init__(self, delay: float) -> None:
+        self._delay = max(0.0, delay or 0.0)
+        self._lock = threading.Lock()
+        self._next = 0.0
+
+    def wait(self) -> None:
+        if not self._delay:
+            return
+        with self._lock:
+            now = time.monotonic()
+            if now < self._next:
+                time.sleep(self._next - now)
+                now = time.monotonic()
+            self._next = now + self._delay
+
+
+def _fetch_sequential(tasks, errors: list[str], *, retries: int,
+                      backoff: float, timeout: float, delay: float) -> list[dict]:
+    jobs: list[dict] = []
+    for provider, slug, fetcher in tasks:
+        _emit(console.paint(f"== {provider}/{slug}", "bold", "cyan"))
+        try:
+            found = fetcher(slug, retries=retries, backoff=backoff, timeout=timeout)
+        except AtsError as e:
+            errors.append(f"{provider}/{slug}: {e}")
+            _emit(console.paint(f"   [error] {e}", "red"))
+            continue
+        _emit(f"   {len(found)} job(s)")
+        jobs.extend(found)
+        if delay:
+            time.sleep(delay)
+    return jobs
+
+
+def _fetch_concurrent(tasks, errors: list[str], *, retries: int,
+                      backoff: float, timeout: float, delay: float,
+                      concurrency: int, per_host: int) -> list[dict]:
+    workers = max(1, concurrency)
+    host_limit = max(1, per_host or workers)
+    semaphores: dict[str, threading.Semaphore] = {}
+    sem_lock = threading.Lock()
+    limiter = _RateLimiter(delay)
+    results: list[list[dict] | None] = [None] * len(tasks)
+
+    def _host_semaphore(host: str) -> threading.Semaphore:
+        with sem_lock:
+            sem = semaphores.get(host)
+            if sem is None:
+                sem = threading.Semaphore(host_limit)
+                semaphores[host] = sem
+            return sem
+
+    def _work(index: int, provider: str, slug: str, fetcher):
+        with _host_semaphore(PROVIDER_DOMAINS.get(provider, provider)):
+            limiter.wait()
+            found = fetcher(slug, retries=retries, backoff=backoff, timeout=timeout)
+        return index, found
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {
+            pool.submit(_work, index, provider, slug, fetcher):
+                (index, provider, slug)
+            for index, (provider, slug, fetcher) in enumerate(tasks)
+        }
+        for future in as_completed(futures):
+            index, provider, slug = futures[future]
+            try:
+                _, found = future.result()
+            except AtsError as e:
+                errors.append(f"{provider}/{slug}: {e}")
+                _emit(console.paint(f"   [error] {provider}/{slug}: {e}", "red"))
+                continue
+            results[index] = found
+            _emit(console.paint(f"== {provider}/{slug}", "bold", "cyan")
+                  + f" {len(found)} job(s)")
+
+    jobs: list[dict] = []
+    for found in results:
+        if found:
+            jobs.extend(found)
+    return jobs
+
+
 def fetch_targets(targets: dict[str, list[str]], *, retries: int = 3,
                   backoff: float = 2.0, timeout: float = 20.0,
-                  delay: float = 0.0) -> tuple[list[dict], list[str]]:
+                  delay: float = 0.0, concurrency: int = 1,
+                  per_host: int = 5) -> tuple[list[dict], list[str]]:
     """
     Fetch jobs for every ``provider -> slug`` target.
 
     Returns ``(jobs, errors)``; a failing company does not abort the rest.
+
+    ``concurrency > 1`` fetches several companies in parallel through a thread
+    pool, with at most ``per_host`` simultaneous requests per ATS host. In that
+    mode ``delay`` spaces request starts through a shared rate limiter instead
+    of sleeping after each target. The default (``concurrency=1``) keeps the
+    original sequential behavior.
     """
-    jobs: list[dict] = []
+    tasks: list[tuple[str, str, Callable[..., list[dict]]]] = []
     errors: list[str] = []
     for provider, slugs in targets.items():
         fetcher = FETCHERS.get(provider)
@@ -273,18 +380,17 @@ def fetch_targets(targets: dict[str, list[str]], *, retries: int = 3,
             errors.append(f"{provider}: unknown provider")
             continue
         for slug in slugs:
-            if not console.QUIET:
-                print(console.paint(f"== {provider}/{slug}", "bold", "cyan"))
-            try:
-                found = fetcher(slug, retries=retries, backoff=backoff, timeout=timeout)
-            except AtsError as e:
-                errors.append(f"{provider}/{slug}: {e}")
-                if not console.QUIET:
-                    print(console.paint(f"   [error] {e}", "red"))
-                continue
-            if not console.QUIET:
-                print(f"   {len(found)} job(s)")
-            jobs.extend(found)
-            if delay:
-                time.sleep(delay)
+            tasks.append((provider, slug, fetcher))
+
+    if not tasks:
+        return [], errors
+
+    if concurrency and concurrency > 1:
+        jobs = _fetch_concurrent(
+            tasks, errors, retries=retries, backoff=backoff, timeout=timeout,
+            delay=delay, concurrency=concurrency, per_host=per_host)
+    else:
+        jobs = _fetch_sequential(
+            tasks, errors, retries=retries, backoff=backoff, timeout=timeout,
+            delay=delay)
     return jobs, errors
