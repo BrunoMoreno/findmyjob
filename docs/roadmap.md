@@ -160,10 +160,10 @@ collect -> normalize -> deduplicate -> persist -> reconcile status -> serve.
 
 ### Phase 1 - Production readiness
 
-- [ ] `JobPosting` Pydantic model across all fetchers.
-- [ ] Expose `external_id` / provider in ATS results.
+- [x] `JobPosting` Pydantic model across all fetchers.
+- [x] Expose `external_id` / provider in ATS results.
 - [ ] Configurable concurrency for ATS requests.
-- [ ] Reconciliation command (`db mark-stale`) and run records.
+- [x] Reconciliation command (`db mark-stale`) and run records.
 - [ ] Postgres sink (`sync --dsn`).
 - [ ] Structured logging and metrics.
 

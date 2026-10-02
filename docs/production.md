@@ -77,10 +77,15 @@ Suggested tables:
 ATS APIs only return **open** postings, so a posting that disappears is
 probably closed. Use `first_seen_at` / `last_seen_at`:
 
-1. Every run refreshes `last_seen_at`.
-2. A reconciliation step marks postings not seen in N runs as `stale`, then
-   `closed`.
+1. Every run refreshes `last_seen_at` (and reactivates a `stale`/`closed` job
+   that reappears).
+2. `db mark-stale --older-than N` moves long-unseen `active` postings to
+   `stale`; `db mark-closed --older-than N` moves postings that stayed `stale`
+   for long enough to `closed`.
 3. `db purge --older-than N` removes or archives them.
+
+Each run also appends a row to `runs` (see `db runs`), so failures and counts
+are attributable per run.
 
 ## Scheduling
 
