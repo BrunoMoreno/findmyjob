@@ -21,7 +21,7 @@ dependencies = [
 Homepage = "https://github.com/BrunoMoreno/job-search"
 
 [project.scripts]
-jobsearch = "jobsearch:main"
+jobsearch = "jobsearch.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/jobsearch"]

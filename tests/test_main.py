@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 # Adiciona o diretório pai ao path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from jobsearch import (
+from jobsearch.cli import (
     COUNTRIES,
     ATS,
     BOARDS,
