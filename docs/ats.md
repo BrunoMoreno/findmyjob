@@ -74,7 +74,23 @@ dork search (`--filter-include`, `--filter-exclude`, `--max-days`,
 | `--provider` | Only these providers (repeatable) |
 | `--retries` | Attempts per request (default: 3) |
 | `--timeout` | Request timeout in seconds (default: 20) |
-| `--delay` | Seconds between companies (default: 0) |
+| `--delay` | Seconds between request starts (default: 0) |
+| `--concurrency` | Companies fetched in parallel (default: 1, sequential) |
+| `--per-host` | Max simultaneous requests per ATS host (default: 5) |
+
+### Concurrency
+
+With many targets you can fetch companies in parallel:
+
+```bash
+findmyjob ats fetch -t companies.json --concurrency 8 --per-host 4
+```
+
+Requests to the **same** ATS host are capped at `--per-host` (default 5), and
+`--delay` then spaces request *starts* through a shared rate limiter instead of
+sleeping after each company. A failing company still never aborts the rest, and
+the output keeps the targets-file order regardless of completion order. The
+default, `--concurrency 1`, preserves the original sequential behavior.
 
 ## Date filtering
 

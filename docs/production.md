@@ -93,8 +93,9 @@ are attributable per run.
   thousands of targets: only re-check a company when its TTL has expired.
 - Run **discovery** (`ats discover`) less often than **fetch** (targets change
   slowly; postings change daily).
-- Spread requests over time (`--delay`) and use retries with backoff. The
-  built-in retry uses exponential backoff.
+- Fetch companies in parallel with `--concurrency` while keeping `--per-host`
+  low, spread request starts with `--delay`, and rely on the built-in retries
+  with exponential backoff.
 
 ## Reliability and observability
 
@@ -122,7 +123,7 @@ Be aware of the following when designing the portal:
 
 ## Scale
 
-- ATS requests are currently sequential; add concurrency with a per-host limit.
+- Tune `--concurrency`/`--per-host` for the size of your target list.
 - Cache board responses with ETag/Last-Modified to avoid re-downloading
   unchanged payloads.
 - Handle `429` with `Retry-After` and jittered backoff.

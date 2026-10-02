@@ -51,6 +51,9 @@ data directly from the ATS, one request per company:
 - Real posting dates from the APIs make `--max-days` / `--strict-dates`
   meaningful. A failing company does not abort the run; exit code `2` means
   every target failed.
+- `ats fetch` can fetch companies concurrently (`--concurrency`) with a
+  per-host cap (`--per-host`) and a shared `--delay` rate limiter; failures stay
+  isolated and the output keeps the targets-file order.
 
 ### 1.4 Internal refactor
 
@@ -100,7 +103,6 @@ The test suite is now at 78 tests.
 
 - Cache/rate-limit controls for `ats fetch` with large target lists.
 - More providers (Workable, Recruitee, Personio, Teamtailor).
-- Optional concurrency for the ATS requests.
 - Location-normalization helpers for cross-provider filtering.
 - A `--follow`/`--incremental` mode that only reports jobs not seen before.
 

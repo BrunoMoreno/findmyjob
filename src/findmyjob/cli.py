@@ -309,7 +309,9 @@ def _ats_fetch(args: argparse.Namespace) -> int:
 
     log.info("Fetching %d target(s) from %s", total_targets, targets_path)
     jobs, errors = fetch_targets(targets, retries=args.retries,
-                                 timeout=args.timeout, delay=args.delay)
+                                 timeout=args.timeout, delay=args.delay,
+                                 concurrency=args.concurrency,
+                                 per_host=args.per_host)
     log.info("Fetched %d job(s); %d target(s) failed", len(jobs), len(errors))
 
     jobs = _dedup_normalized(jobs)
@@ -410,7 +412,11 @@ def ats_command(argv: list[str]) -> int:
                          help="number of attempts per request")
     p_fetch.add_argument("--timeout", type=float, default=20.0, help="request timeout (s)")
     p_fetch.add_argument("--delay", type=float, default=0.0,
-                         help="seconds between companies")
+                         help="seconds between request starts")
+    p_fetch.add_argument("--concurrency", type=int, default=1,
+                         help="number of companies to fetch in parallel (default: 1)")
+    p_fetch.add_argument("--per-host", type=int, default=5,
+                         help="max simultaneous requests per ATS host (default: 5)")
 
     p_disc = sub.add_parser("discover", parents=[common],
                             help="find ATS companies via search dorks")
