@@ -1,6 +1,6 @@
 """FindMyJob - Job search via dorks and public ATS JSON APIs."""
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 __all__ = [
     "main",
